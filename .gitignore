@@ -1,0 +1,25 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Flask stuff:
+instance/
+.webassets-cache
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Data files
+training_20180910.zip
+plots/
+data/
+processed_data/
+
+# IntelliJ files
+/annotating-ehr.iml
+/.idea/
