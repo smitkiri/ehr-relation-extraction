@@ -7,6 +7,71 @@ Created on Sun Jul 19 23:10:20 2020
 
 import sys
 from pickle import dump, load
+from IPython.core.display import display, HTML
+
+TPL_HTML = '<span style = "background-color: {color}; border-radius: 5px;">&nbsp;{content}&nbsp;</span>'
+
+COLORS = {"Drug": "#aa9cfc", "Strength": "#ff9561", 
+          "Form": "#7aecec", "Frequency": "#9cc9cc", 
+          "Route": "#ffeb80", "Dosage": "#bfe1d9", 
+          "Reason": "#e4e7d2", "ADE": "#ff8197", 
+          "Duration": "#97c4f5"}
+
+def display_ehr(text, tags):    
+    '''
+    Highlights EHR records with colors and displays
+    them as HTML. Ideal for working with Jupyter Notebooks
+
+    Parameters
+    ----------
+    text : str
+        EHR record to render
+    tags : dictionary
+        A dictionary that stores entities and relations
+        in Entity and Relation classes
+
+    Returns
+    -------
+    None.
+
+    '''
+    ent_ranges = []
+    entities = tags['entities']
+    
+    # Each range list would look like [start_idx, end_idx, ent_type]
+    for ent in entities.values():
+        for rng in ent.ranges:
+            rng.append(ent.name)
+            ent_ranges.append(rng)
+    
+    # Sort ranges by start index
+    ent_ranges.sort(key = lambda x: x[0])
+    
+    # Final text to render
+    render_text = ""
+    start_idx = 0
+    
+    # Display legend
+    for ent, col in COLORS.items():
+        render_text += TPL_HTML.format(content = ent, color = col)
+        render_text += "&nbsp" * 5
+    
+    render_text += '\n'
+    render_text += '--' * 50
+    render_text += "\n\n"
+    
+    # Replace each character range with HTML span template
+    for rng in ent_ranges:
+        render_text += text[start_idx:rng[0]]
+        render_text += TPL_HTML.format(content = text[rng[0]:rng[1]], color = COLORS[rng[2]])
+        start_idx = rng[1]
+    
+    render_text += text[start_idx:]
+    render_text = render_text.replace("\n", "<br>")
+    
+    # Render HTML
+    display(HTML(render_text))
+
 
 def drawProgressBar(current, total, string = '', barLen = 20):
     '''
