@@ -16,7 +16,7 @@ class HealthRecord:
     '''
     Objects that represent a single electronic health record
     '''
-    def __init__(self, record_id: int, text_path: str, 
+    def __init__(self, record_id: str, text_path: str, 
                  ann_path: str = None,
                  tokenizer: Callable[[str], List[str]] = None,
                  is_training: bool = True) -> None:
@@ -216,6 +216,21 @@ class HealthRecord:
         self.token_to_word_map = token_to_org_map
         self.word_to_token_map = org_to_token_map
         self.tokens = all_doc_tokens
+        
+    
+    def get_tokens(self) -> List[str]:
+        '''
+        Returns the tokens.
+
+        Returns
+        -------
+        List[str]
+            List of tokens.
+        '''
+        if self.tokenizer is None:
+            raise AttributeError("Tokenizer not set.")
+            
+        return self.tokens
         
         
     def set_tokenizer(self, tokenizer: Callable[[str], List[str]])\
