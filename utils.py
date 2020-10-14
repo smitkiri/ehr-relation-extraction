@@ -17,7 +17,7 @@ COLORS = {"Drug": "#aa9cfc", "Strength": "#ff9561",
           "Reason": "#e4e7d2", "ADE": "#ff8197", 
           "Duration": "#97c4f5"}
 
-def display_ehr(text, tags):    
+def display_ehr(text, entities):    
     '''
     Highlights EHR records with colors and displays
     them as HTML. Ideal for working with Jupyter Notebooks
@@ -36,7 +36,6 @@ def display_ehr(text, tags):
 
     '''
     ent_ranges = []
-    entities = tags['entities']
     
     # Each range list would look like [start_idx, end_idx, ent_type]
     for ent in entities.values():
