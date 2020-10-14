@@ -170,7 +170,39 @@ class HealthRecord:
             
         return entities, relations
     
-    
+# =============================================================================
+#     def _compute_tokens(self) -> None:
+#         '''
+#         Internal function that computes the tokens 
+#         and char to token map for EHR data
+#         '''
+#         char_to_token_map = [0] * len(self.text)
+#         all_doc_tokens = []
+#         
+#         # Spacy models gives a list of dictionaries, each representing
+#         # a single token, with the keys id (token index), 
+#         # start (char start idx) and end (char end idx)
+#         token_dict = self.tokenizer(self.text).to_json()['tokens']
+#         
+#         for t in token_dict:
+#             start_idx = t['start']
+#             end_idx = t['end']
+#             all_doc_tokens.append(self.text[start_idx:end_idx])
+#             #print(all_doc_tokens[-1])
+#             
+#             for i in range(start_idx, end_idx):
+#                 if i < len(char_to_token_map):
+#                     char_to_token_map[i] = t['id']
+#                     
+#         for i in range(len(char_to_token_map)):
+#             if char_to_token_map[i] == 0:
+#                 char_to_token_map[i] = char_to_token_map[i - 1]
+#         
+#         self.tokens = all_doc_tokens
+#         self.char_to_token_map = char_to_token_map
+#     
+# =============================================================================
+
     def _compute_char_to_word_idx(self) -> None:
         '''
         Internal function that computes character to word index map.
@@ -180,7 +212,7 @@ class HealthRecord:
         in the text.
         '''
         char_to_word = []
-        words = re.split(' ', self.text)
+        words = re.split('\n| |\t', self.text)
 
         for idx in range(len(words)):
             # The space next to a word will be considered as part of that word itself
@@ -203,7 +235,7 @@ class HealthRecord:
         org_to_token_map = []
         all_doc_tokens = []
         
-        words = re.split(' ', self.text)
+        words = re.split('\n| |\t', self.text)
     
         for idx, word in enumerate(words):
             org_to_token_map.append(len(all_doc_tokens))
@@ -267,6 +299,8 @@ class HealthRecord:
         word_idx = self.char_to_word_map[char_idx]
         token_idx = self.word_to_token_map[word_idx]
         
+        #token_idx = self.char_to_token_map[char_idx]
+        
         return token_idx
     
     
@@ -290,6 +324,8 @@ class HealthRecord:
         
         word_idx = self.token_to_word_map[token_idx]
         char_idx = self.char_to_word_map.index(word_idx)
+        
+        #char_idx = self.char_to_token_map.index(token_idx)
         
         return char_idx
     
