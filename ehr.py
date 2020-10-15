@@ -170,38 +170,6 @@ class HealthRecord:
             
         return entities, relations
     
-# =============================================================================
-#     def _compute_tokens(self) -> None:
-#         '''
-#         Internal function that computes the tokens 
-#         and char to token map for EHR data
-#         '''
-#         char_to_token_map = [0] * len(self.text)
-#         all_doc_tokens = []
-#         
-#         # Spacy models gives a list of dictionaries, each representing
-#         # a single token, with the keys id (token index), 
-#         # start (char start idx) and end (char end idx)
-#         token_dict = self.tokenizer(self.text).to_json()['tokens']
-#         
-#         for t in token_dict:
-#             start_idx = t['start']
-#             end_idx = t['end']
-#             all_doc_tokens.append(self.text[start_idx:end_idx])
-#             #print(all_doc_tokens[-1])
-#             
-#             for i in range(start_idx, end_idx):
-#                 if i < len(char_to_token_map):
-#                     char_to_token_map[i] = t['id']
-#                     
-#         for i in range(len(char_to_token_map)):
-#             if char_to_token_map[i] == 0:
-#                 char_to_token_map[i] = char_to_token_map[i - 1]
-#         
-#         self.tokens = all_doc_tokens
-#         self.char_to_token_map = char_to_token_map
-#     
-# =============================================================================
 
     def _compute_char_to_word_idx(self) -> None:
         '''
