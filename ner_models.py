@@ -6,8 +6,9 @@ torch.manual_seed(0)
 from torch import nn
 import torch.nn.functional as F
 
-from typing import List, Dict
+from typing import List, Tuple
 from ehr import HealthRecord
+from annotations import Entity
 from collections import defaultdict
 import re
 
@@ -85,7 +86,7 @@ class DictNER:
         return self
     
     def predict(self, test_data: List[HealthRecord])\
-            -> List[Dict[str, List[tuple]]]:
+            -> List[List[Entity]]:
         '''
         Returns character ranges for all predicted entities
 
@@ -96,21 +97,31 @@ class DictNER:
 
         Returns
         -------
-        List[Dict[str, List[tuple]]]
-            List of Dictionary with keys as named entities and 
-            values as a list of character ranges.
+        List[List[Entity]]
+            Predictions for each example. Each prediction list 
+            contains several Entity objects.
 
         '''
         predictions = []
         for data in test_data:
-            entities = {}
+            entities = []
+            j = 1
             for ent_name, ent_re in self.ner_re.items():
                 # Get the start and end character ranges of entities
                 # Remove the extra space at the start and end of entity
-                entities[ent_name] = [(m.start(0) + 1, m.end(0) - 1) \
+                ranges = [(m.start(0) + 1, m.end(0) - 1, ent_name) \
                                       for m in re.finditer(ent_re, data.text, re.IGNORECASE)]
-            predictions.append(entities)
+                 
+                # Convert to Entity Objects
+                for r in ranges:
+                    ent = Entity(entity_id = "T" + str(j))
+                    ent.add_range([r[0], r[1]])
+                    ent.set_entity_type(r[2])
+                    entities.append(ent)
+                    j += 1
             
+            predictions.append(entities)
+                        
         return predictions
     
 

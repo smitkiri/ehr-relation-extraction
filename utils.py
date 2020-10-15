@@ -26,9 +26,8 @@ def display_ehr(text, entities):
     ----------
     text : str
         EHR record to render
-    tags : dictionary
-        A dictionary that stores entities and relations
-        in Entity and Relation classes
+    entities : dictionary / list
+         A list of Entity objects
 
     Returns
     -------
@@ -37,8 +36,11 @@ def display_ehr(text, entities):
     '''
     ent_ranges = []
     
+    if isinstance(entities, dict):
+        entities = entities.values()
+        
     # Each range list would look like [start_idx, end_idx, ent_type]
-    for ent in entities.values():
+    for ent in entities:
         for rng in ent.ranges:
             rng.append(ent.name)
             ent_ranges.append(rng)

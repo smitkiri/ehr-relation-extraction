@@ -15,6 +15,17 @@ class Entity(Annotation):
     '''
     def __init__(self, entity_id: str, 
                  entity_type: str = None) -> None:
+        '''
+        Initializes Entity object.
+
+        Parameters
+        ----------
+        entity_id : str
+            Unique entity ID.
+        entity_type : str, optional
+            The type of entity. The default is None.
+
+        '''
         
         super().__init__(entity_id, entity_type)
         self.ranges: List[List[int]] = []
