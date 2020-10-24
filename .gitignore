@@ -25,3 +25,6 @@ reports/
 # IntelliJ files
 /annotating-ehr.iml
 /.idea/
+
+# Scratch files
+Scratch.ipynb

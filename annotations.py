@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Tuple
 
 class Annotation:
     '''
@@ -64,6 +64,19 @@ class Entity(Annotation):
     
     def __str__(self) -> str:
         return self.__repr__()
+    
+    def __getitem__(self, key: int) -> int:
+        '''
+        Makes the class subsriptable on range
+        '''
+        return self.range[key]
+    
+    def __iter__(self) -> Tuple[int, int]:
+        '''
+        Makes class iterable on range
+        '''
+        yield self.range[0]
+        yield self.range[1]
 
 
 class Relation(Annotation):
