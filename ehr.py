@@ -50,6 +50,10 @@ class HealthRecord:
         self.is_training = is_training
         self.set_tokenizer(tokenizer)
         
+        self.char_to_word_map: List[int] = []
+        self.word_to_token_map: List[int] = []
+        self.token_to_word_map: List[int] = []
+        
         if ann_path is not None:
             annotations = self._extract_annotations(ann_path)
             self.entities, self.relations = annotations
@@ -123,18 +127,19 @@ class HealthRecord:
                     if line[1][idx] == ' ':
                         break
                 
-                # Create an Entity object
-                ent = Entity(entity_id = line[0], 
-                             entity_type = line[1][:idx])
                 char_ranges = line[1][idx + 1:]
                 
                 # Get all character ranges, separated by ;
-                char_ranges = char_ranges.split(';')
-                for r in char_ranges:
-                    r = r.split(' ')
-                    r = list(map(int, r))
-                    ent.add_range(r)
-                    
+                char_ranges = [r.split() for r in char_ranges.split(';')]
+                
+                # Create an Entity object
+                ent = Entity(entity_id = line[0], 
+                             entity_type = line[1][:idx])
+            
+                r = [char_ranges[0][0], char_ranges[-1][1]]
+                r = list(map(int, r))
+                ent.set_range(r)
+                
                 ent.set_text(line[2])
                 entities[line[0]] = ent
             

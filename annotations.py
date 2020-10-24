@@ -28,14 +28,14 @@ class Entity(Annotation):
         '''
         
         super().__init__(entity_id, entity_type)
-        self.ranges: List[List[int]] = []
+        self.range: List[int] = []
         self.ann_text: str = ""
         
-    def add_range(self, new_range: List[int]) -> None:
+    def set_range(self, new_range: List[int]) -> None:
         '''
         Add annotation range
         '''
-        self.ranges.append(new_range)
+        self.range = new_range
         
     def set_text(self, text: str) -> None:
         '''
@@ -57,9 +57,8 @@ class Entity(Annotation):
         string += "ID: " + self.ann_id + "\n"
         string += "Entity name: " + self.name + "\n"
         
-        string += "Character ranges: "
-        string += "; ".join([str(r[0]) + " " + str(r[1]) 
-                             for r in self.ranges]) + "\n"     
+        string += "Character range: "
+        string += str(self.range[0]) + " " + str(self.range[1]) + "\n"     
         string += "Entity text: " + self.ann_text    
         return string
     
