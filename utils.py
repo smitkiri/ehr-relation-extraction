@@ -4,10 +4,15 @@ Created on Sun Jul 19 23:10:20 2020
 
 @author: Smit
 """
+from typing import List, Tuple, Callable
 
+import os
 import sys
 from pickle import dump, load
 from IPython.core.display import display, HTML
+from ehr import HealthRecord
+import random
+random.seed(0)
 
 TPL_HTML = '<span style = "background-color: {color}; border-radius: 5px;">&nbsp;{content}&nbsp;</span>'
 
@@ -65,6 +70,68 @@ def display_ehr(text, entities):
     # Render HTML
     display(HTML(render_text))
 
+
+def read_data(data_dir: str = 'data/', train_ratio: int = 0.8, 
+              tokenizer: Callable[[str], List[str]] = None, 
+              verbose: int = 0) -> Tuple[List[HealthRecord], List[HealthRecord]]:
+    '''
+    Reads train and test data
+
+    Parameters
+    ----------
+    data_dir : str, optional
+        Directory where the data is located. The default is 'data/'.
+    
+    train_ratio : int, optional
+        Percentage split of train data. The default is 0.8.
+        
+    tokenizer : Callable[[str], List[str]], optional
+        The tokenizer function to use.. The default is None.
+        
+    verbose : int, optional
+        1 to print reading progress, 0 otherwise. The default is 0.
+
+    Returns
+    -------
+    Tuple[List[HealthRecord], List[HealthRecord]]
+        Train data, Test data.
+
+    '''
+    # Get all the IDs of data
+    file_ids = sorted(list(set(['.'.join(fname.split('.')[:-1]) for fname in os.listdir(data_dir)])))
+    
+    # Splitting IDs into random training and test data
+    random.shuffle(file_ids)
+    
+    split_idx = int(train_ratio * len(file_ids)) 
+    train_ids = file_ids[:split_idx]
+    test_ids = file_ids[split_idx:]
+    
+    if verbose == 1:
+        print("Train data:")
+        
+    train_data = []
+    for idx, fid in enumerate(train_ids):
+        record = HealthRecord(fid, text_path = data_dir + fid + '.txt', 
+                              ann_path = data_dir + fid + '.ann', 
+                              tokenizer = tokenizer)
+        train_data.append(record)
+        if verbose == 1:
+            drawProgressBar(idx + 1, split_idx)
+    
+    if verbose == 1:
+        print('\n\n')
+        
+    test_data = []
+    for idx, fid in enumerate(test_ids):
+        record = HealthRecord(fid, text_path = data_dir + fid + '.txt', 
+                              ann_path = data_dir + fid + '.ann', 
+                              tokenizer = tokenizer)
+        test_data.append(record)
+        if verbose == 1:
+            drawProgressBar(idx + 1, len(file_ids) - split_idx)
+        
+    return (train_data, test_data)
 
 def drawProgressBar(current, total, string = '', barLen = 20):
     '''
