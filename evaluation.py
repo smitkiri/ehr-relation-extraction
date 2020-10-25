@@ -3,6 +3,9 @@ from collections import defaultdict
 from annotations import Entity
 from ehr import HealthRecord
 
+TAGS = ('Drug', 'Strength', 'Duration', 'Route', 'Form',
+            'ADE', 'Dosage', 'Reason', 'Frequency')
+
 class Measures(object):
     """Abstract methods and var to evaluate."""
 
@@ -141,13 +144,7 @@ def get_entity_report(predicted: List[Iterable[int]],
     # Calculate the measures for both modes
     report = {}
     for mode in ('strict', 'lenient'):
-        measures = Measures(tp = scores[mode]['tp'], 
-                            fp = scores[mode]['fp'], 
-                            fn = scores[mode]['fn'])
         report[mode] = {}
-        report[mode]['precision'] = measures.precision()
-        report[mode]['recall'] = measures.recall()
-        report[mode]['f1'] = measures.f1()
         report[mode]['tp'] = scores[mode]['tp']
         report[mode]['fp'] = scores[mode]['fp']
         report[mode]['fn'] = scores[mode]['fn']
@@ -155,12 +152,10 @@ def get_entity_report(predicted: List[Iterable[int]],
     return report
         
 
-def get_ner_report(predicted: Union[dict, List[Entity]], 
-                   actual: Union[dict, List[Entity]], 
-                   verbose: int = 0) -> dict:
+def get_single_ner_report(predicted: Union[dict, List[Entity]], 
+                      actual: Union[dict, List[Entity]]) -> dict:
     '''
-    Get the NER report for a single list of predicted and
-    actual entities
+    Get the NER report for a single document.
 
     Parameters
     ----------
@@ -171,9 +166,6 @@ def get_ner_report(predicted: Union[dict, List[Entity]],
     actual : Union[dict, List[Entity]]
         Actual values. If it is of type dict, keys should 
         indicate entities and values would be predicted ranges.
-    
-    verbose : int, optional
-        1 to print the report, 0 otherwise. The default is 0.
 
     Returns
     -------
@@ -201,11 +193,12 @@ def get_ner_report(predicted: Union[dict, List[Entity]],
     
     report = {}
     for mode in ('strict', 'lenient'):
-        report[mode] = {'tp': 0, 'fp': 0, 'fn': 0, 
-                        'micro': {'precision': 0, 'recall': 0, 'f1': 0}, 
-                        'macro': {'precision': 0, 'recall': 0, 'f1': 0}}
+        report[mode] = {'tp': 0, 'fp': 0, 'fn': 0}
         
-    for ent_type in actual.keys():
+        for t in TAGS:
+            report[mode][t] = {'tp': 0, 'fp': 0, 'fn': 0}
+        
+    for ent_type in TAGS:
         ent_values = get_entity_report(predicted[ent_type], 
                                        actual[ent_type])
         
@@ -215,34 +208,102 @@ def get_ner_report(predicted: Union[dict, List[Entity]],
             report[mode]['tp'] += ent_mode['tp']
             report[mode]['fp'] += ent_mode['fp']
             report[mode]['fn'] += ent_mode['fn']
-            
-            report[mode]['macro']['precision'] += ent_mode['precision']
-            report[mode]['macro']['recall'] += ent_mode['recall']
-            report[mode]['macro']['f1'] += ent_mode['f1']
-            
+                        
             report[mode][ent_type] = ent_mode
         
+    for mode in ('strict', 'lenient'):        
+        measure = Measures(tp = report[mode]['tp'], 
+                           fp = report[mode]['fp'], 
+                           fn = report[mode]['fn'])
+        
+        report[mode]['precision'] = measure.precision()
+        report[mode]['recall'] = measure.recall()
+        report[mode]['f1'] = measure.f1()
+        
+    return report
+       
+def ner_report(predicted: List[Union[dict, List[Entity]]], 
+               actual: List[HealthRecord], 
+               verbose: int = 0) -> dict:
+    '''
+    Generates NER evaluation report for multiple documents.
+
+    Parameters
+    ----------
+    predicted : List[Union[dict, List[Entity]]]
+        Entity predictions for all documents.
+        
+    actual : List[HealthRecord]
+        Actual list of HealthRecord objects for all documents.
+    
+    verbose : int, optional
+        1 to print the report, 0 otherwise. The default is 0.
+
+    Returns
+    -------
+    dict
+        Strict and lenient scores for .
+
+    '''
+    assert len(predicted) == len(actual)
+
+    report = {}
     for mode in ('strict', 'lenient'):
-        report[mode]['macro']['precision'] /= len(actual.keys())
-        report[mode]['macro']['recall'] /= len(actual.keys())
-        report[mode]['macro']['f1'] /= len(actual.keys())
+        report[mode] = {'tp': 0, 'fp': 0, 'fn': 0, 
+                        'macro': {'precision': 0, 'recall': 0, 'f1': 0}, 
+                        'micro': {'precision': 0, 'recall': 0, 'f1': 0}}
         
-        micro_measure = Measures(tp = report[mode]['tp'], 
-                                 fp = report[mode]['fp'], 
-                                 fn = report[mode]['fn'])
+        for t in TAGS:
+            report[mode][t] = {'tp': 0, 'fp': 0, 'fn': 0}
+
+    for i in range(len(predicted)):
+        single_report = get_single_ner_report(
+            predicted[i], list(actual[i].entities.values()))
         
-        report[mode]['micro']['precision'] = micro_measure.precision()
-        report[mode]['micro']['recall'] = micro_measure.recall()
-        report[mode]['micro']['f1'] = micro_measure.f1()
-
-
+        for mode in ('strict', 'lenient'):
+            report[mode]['tp'] += single_report[mode]['tp']
+            report[mode]['fp'] += single_report[mode]['fp']
+            report[mode]['fn'] += single_report[mode]['fn']
+            
+            report[mode]['macro']['precision'] += single_report[mode]['precision']
+            report[mode]['macro']['recall'] += single_report[mode]['recall']
+            report[mode]['macro']['f1'] += single_report[mode]['f1']
+            
+            for t in TAGS:
+                report[mode][t]['tp'] += single_report[mode][t]['tp']
+                report[mode][t]['fp'] += single_report[mode][t]['fp']
+                report[mode][t]['fn'] += single_report[mode][t]['fn']
+                
+    for mode in ('strict', 'lenient'):
+        report[mode]['macro']['precision'] /= len(predicted)
+        report[mode]['macro']['recall'] /= len(predicted)
+        report[mode]['macro']['f1'] /= len(predicted)
+        
+        micro_measures = Measures(tp = report[mode]['tp'], 
+                                  fp = report[mode]['fp'], 
+                                  fn = report[mode]['fn'])
+        
+        report[mode]['micro']['precision'] = micro_measures.precision()
+        report[mode]['micro']['recall'] = micro_measures.recall()
+        report[mode]['micro']['f1'] = micro_measures.f1()
+        
+        for t in TAGS:
+            tag_measures = Measures(tp = report[mode][t]['tp'], 
+                                    fp = report[mode][t]['fp'], 
+                                    fn = report[mode][t]['fn'])
+            
+            report[mode][t]['precision'] = tag_measures.precision()
+            report[mode][t]['recall'] = tag_measures.recall()
+            report[mode][t]['f1'] = tag_measures.f1()
+            
+    
     def print_report(mode):
         '''
         Print the generated report.
         '''
         report_mode = report[mode]
         print('Entity\t\tprecision\trecall\t\tf1 score\n')
-        for ent_type in actual.keys():
+        for ent_type in TAGS:
             ent_type_str = ent_type + '\t' * (1 - int(len(ent_type) / 8))
             string = ent_type_str + '\t{p:.2f}\t\t{r:.2f}\t\t{f1:.2f}'
             string = string.format(p = round(report_mode[ent_type]['precision'], 2), 
@@ -277,41 +338,8 @@ def get_ner_report(predicted: Union[dict, List[Entity]],
         print("\t\t  Mode: Lenient")
         print("=======================================================")
         print_report('lenient')
-        
+
     return report
-       
-def ner_report(predicted: List[Union[dict, List[Entity]]], 
-               actual: List[HealthRecord], 
-               verbose: int = 0) -> dict:
-    '''
-    
-
-    Parameters
-    ----------
-    predicted : List[Union[dict, List[Entity]]]
-        DESCRIPTION.
-    actual : List[HealthRecord]
-        DESCRIPTION.
-    verbose : int, optional
-        DESCRIPTION. The default is 0.
-
-    Returns
-    -------
-    dict
-        DESCRIPTION.
-
-    '''
-    all_pred = []
-    all_act = []
-    
-    for p in predicted:
-        all_pred += p
-        
-    for a in actual:
-        all_act += list(a.entities.values())
-        
-    return get_ner_report(all_pred, all_act, verbose)
-
 
 # =============================================================================
 # def main():
