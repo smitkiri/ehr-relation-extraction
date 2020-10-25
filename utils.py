@@ -98,7 +98,7 @@ def read_data(data_dir: str = 'data/', train_ratio: int = 0.8,
 
     '''
     # Get all the IDs of data
-    file_ids = sorted(list(set(['.'.join(fname.split('.')[:-1]) for fname in os.listdir(data_dir)])))
+    file_ids = sorted(list(set(['.'.join(fname.split('.')[:-1]) for fname in os.listdir(data_dir) if not fname.startswith('.')])))
     
     # Splitting IDs into random training and test data
     random.shuffle(file_ids)
@@ -120,7 +120,7 @@ def read_data(data_dir: str = 'data/', train_ratio: int = 0.8,
             drawProgressBar(idx + 1, split_idx)
     
     if verbose == 1:
-        print('\n\n')
+        print('\n\nTest Data:')
         
     test_data = []
     for idx, fid in enumerate(test_ids):
