@@ -65,7 +65,7 @@ class DictNER:
         for data in train_data:
             for ent in data.entities.values():
                 # We have a specific RE for Dosage
-                if ent.name != 'Dosage':
+                if ent.name != 'Strength':
                     # Ignore text with length 1
                     if ent.ann_text.lower() not in ner_dict[ent.name]\
                         and len(ent.ann_text) > 1: 
@@ -75,7 +75,7 @@ class DictNER:
             ner_dict[name] = self._get_clean_re(entity_list)
         
         # Dosage is just a number followed by mg or mcg
-        ner_dict['Dosage'] = '\d+[ ]*(?:mg|mcg)'
+        ner_dict['Strength'] = '\d+[ ]*(?:mg|mcg)'
         self.ner_re = dict(ner_dict)
         return self
     
