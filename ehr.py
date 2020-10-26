@@ -48,11 +48,11 @@ class HealthRecord:
         self.record_id = record_id
         self.text = self._read_ehr(text_path)
         self.is_training = is_training
-        self.set_tokenizer(tokenizer)
         
         self.char_to_word_map: List[int] = []
         self.word_to_token_map: List[int] = []
         self.token_to_word_map: List[int] = []
+        self.set_tokenizer(tokenizer)
         
         if ann_path is not None:
             annotations = self._extract_annotations(ann_path)
@@ -251,6 +251,7 @@ class HealthRecord:
         self.tokenizer = tokenizer
         if tokenizer is not None:
             self._compute_tokens()
+            
         
     def get_token_idx(self, char_idx: int) -> int:
         '''
@@ -301,6 +302,38 @@ class HealthRecord:
         #char_idx = self.char_to_token_map.index(token_idx)
         
         return char_idx
+    
+    def get_labels(self) -> List[str]:
+        '''
+        Get token labels in IOB format.
+
+        Returns
+        -------
+        List[str]
+            Labels.
+
+        '''
+        if self.tokenizer is None:
+            raise AttributeError("No tokens foud. Set tokenizer first.")
+            
+        ent_label_map = {'Drug': 'DRUG', 'Strength': 'STR', 'Duration': 'DUR', 
+                 'Route': 'ROU', 'Form': 'FOR', 'ADE': 'ADE', 'Dosage': 'DOS', 
+                 'Reason': 'REA', 'Frequency': 'FRE'}
+        
+        labels = ['O'] * len(self.tokens)
+        
+        for ent in self.entities:
+            start_idx = self.get_token_idx(ent[0])
+            end_idx = self.get_token_idx(ent[1])
+            
+            for idx in range(start_idx, end_idx + 1):
+                if idx == start_idx:
+                    labels[idx] = 'B-' + ent_label_map[ent.name]
+                else:
+                    labels[idx] = 'I-' + ent_label_map[ent.name]
+        
+        return labels
+    
     
     def get_annotations(self) -> AnnotationInfo:
         '''
