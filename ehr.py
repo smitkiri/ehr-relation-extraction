@@ -1,6 +1,7 @@
 from annotations import Entity, Relation
 from typing import List, Dict, TypedDict, Tuple, Callable
 import warnings
+import numpy
 import re
 
 
@@ -48,6 +49,10 @@ class HealthRecord:
         self.record_id = record_id
         self.text = self._read_ehr(text_path)
         self.is_training = is_training
+        
+        self.char_to_word_map: List[int] = []
+        self.word_to_token_map: List[int] = []
+        self.token_to_word_map: List[int] = []
         self.set_tokenizer(tokenizer)
         
         if ann_path is not None:
@@ -123,18 +128,19 @@ class HealthRecord:
                     if line[1][idx] == ' ':
                         break
                 
-                # Create an Entity object
-                ent = Entity(entity_id = line[0], 
-                             entity_type = line[1][:idx])
                 char_ranges = line[1][idx + 1:]
                 
                 # Get all character ranges, separated by ;
-                char_ranges = char_ranges.split(';')
-                for r in char_ranges:
-                    r = r.split(' ')
-                    r = list(map(int, r))
-                    ent.add_range(r)
-                    
+                char_ranges = [r.split() for r in char_ranges.split(';')]
+                
+                # Create an Entity object
+                ent = Entity(entity_id = line[0], 
+                             entity_type = line[1][:idx])
+            
+                r = [char_ranges[0][0], char_ranges[-1][1]]
+                r = list(map(int, r))
+                ent.set_range(r)
+                
                 ent.set_text(line[2])
                 entities[line[0]] = ent
             
@@ -246,6 +252,7 @@ class HealthRecord:
         self.tokenizer = tokenizer
         if tokenizer is not None:
             self._compute_tokens()
+            
         
     def get_token_idx(self, char_idx: int) -> int:
         '''
@@ -297,6 +304,38 @@ class HealthRecord:
         
         return char_idx
     
+    def get_labels(self) -> List[str]:
+        '''
+        Get token labels in IOB format.
+
+        Returns
+        -------
+        List[str]
+            Labels.
+
+        '''
+        if self.tokenizer is None:
+            raise AttributeError("No tokens foud. Set tokenizer first.")
+            
+        ent_label_map = {'Drug': 'DRUG', 'Strength': 'STR', 'Duration': 'DUR', 
+                 'Route': 'ROU', 'Form': 'FOR', 'ADE': 'ADE', 'Dosage': 'DOS', 
+                 'Reason': 'REA', 'Frequency': 'FRE'}
+        
+        labels = ['O'] * len(self.tokens)
+        
+        for ent in self.entities:
+            start_idx = self.get_token_idx(ent[0])
+            end_idx = self.get_token_idx(ent[1])
+            
+            for idx in range(start_idx, end_idx + 1):
+                if idx == start_idx:
+                    labels[idx] = 'B-' + ent_label_map[ent.name]
+                else:
+                    labels[idx] = 'I-' + ent_label_map[ent.name]
+        
+        return labels
+    
+    
     def get_annotations(self) -> AnnotationInfo:
         '''
         Get entities and relations in a dictionary.
@@ -342,3 +381,41 @@ class HealthRecord:
             raise AttributeError("Relations not set")
         
         return self.relations
+
+
+    def _compute_elmo_embeddings(self) -> None:
+        '''
+        Computes the Elmo embeddings for each token in EHR text data.
+        '''
+        elmo_embeddings = self.elmo.embed_sentence(self.tokens)[-1]
+        self.elmo_embeddings = elmo_embeddings
+        
+        
+    def set_elmo_embedder(self, elmo: Callable[[str], numpy.ndarray]) -> None:
+        '''
+        Set Elmo embedder for object.
+         
+        Parameters
+        ----------
+        elmo : 
+            The Elmo embedder to use.
+        '''
+        self.elmo = elmo
+        if elmo is not None:
+            self._compute_elmo_embeddings()
+    
+    
+    def get_elmo_embeddings(self) -> numpy.ndarray:
+        '''
+        Get the elmo embeddings.
+
+        Returns
+        -------
+        List[int]:
+            Elmo embeddings for each word
+            
+        '''
+        if self.elmo_embeddings is None:
+            raise AttributeError("Elmo embeddings not set")
+        
+        return self.elmo_embeddings
