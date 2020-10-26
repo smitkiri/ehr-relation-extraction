@@ -2,6 +2,7 @@
 __pycache__/
 *.py[cod]
 *$py.class
+/models/__pycache__/
 
 # Flask stuff:
 instance/
@@ -24,3 +25,6 @@ reports/
 # IntelliJ files
 /annotating-ehr.iml
 /.idea/
+
+# Scratch files
+Scratch.ipynb

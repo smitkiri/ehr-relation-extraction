@@ -4,10 +4,15 @@ Created on Sun Jul 19 23:10:20 2020
 
 @author: Smit
 """
+from typing import List, Tuple, Callable
 
+import os
 import sys
 from pickle import dump, load
 from IPython.core.display import display, HTML
+from ehr import HealthRecord
+import random
+random.seed(0)
 
 TPL_HTML = '<span style = "background-color: {color}; border-radius: 5px;">&nbsp;{content}&nbsp;</span>'
 
@@ -34,20 +39,12 @@ def display_ehr(text, entities):
     None.
 
     '''
-    ent_ranges = []
-    
     if isinstance(entities, dict):
-        entities = entities.values()
-        
-    # Each range list would look like [start_idx, end_idx, ent_type]
-    for ent in entities:
-        for rng in ent.ranges:
-            rng.append(ent.name)
-            ent_ranges.append(rng)
+        entities = list(entities.values())
     
-    # Sort ranges by start index
-    ent_ranges.sort(key = lambda x: x[0])
-    
+    # Sort entity by starting range
+    entities.sort(key = lambda ent: ent.range[0])
+
     # Final text to render
     render_text = ""
     start_idx = 0
@@ -62,10 +59,10 @@ def display_ehr(text, entities):
     render_text += "\n\n"
     
     # Replace each character range with HTML span template
-    for rng in ent_ranges:
-        render_text += text[start_idx:rng[0]]
-        render_text += TPL_HTML.format(content = text[rng[0]:rng[1]], color = COLORS[rng[2]])
-        start_idx = rng[1]
+    for ent in entities:
+        render_text += text[start_idx:ent.range[0]]
+        render_text += TPL_HTML.format(content = text[ent.range[0]:ent.range[1]], color = COLORS[ent.name])
+        start_idx = ent.range[1]
     
     render_text += text[start_idx:]
     render_text = render_text.replace("\n", "<br>")
@@ -73,6 +70,70 @@ def display_ehr(text, entities):
     # Render HTML
     display(HTML(render_text))
 
+
+def read_data(data_dir: str = 'data/', train_ratio: int = 0.8, 
+              tokenizer: Callable[[str], List[str]] = None, 
+              verbose: int = 0) -> Tuple[List[HealthRecord], List[HealthRecord]]:
+    '''
+    Reads train and test data
+
+    Parameters
+    ----------
+    data_dir : str, optional
+        Directory where the data is located. The default is 'data/'.
+    
+    train_ratio : int, optional
+        Percentage split of train data. The default is 0.8.
+        
+    tokenizer : Callable[[str], List[str]], optional
+        The tokenizer function to use.. The default is None.
+        
+    verbose : int, optional
+        1 to print reading progress, 0 otherwise. The default is 0.
+
+    Returns
+    -------
+    Tuple[List[HealthRecord], List[HealthRecord]]
+        Train data, Test data.
+
+    '''
+    # Get all the IDs of data
+    file_ids = sorted(list(set(['.'.join(fname.split('.')[:-1])\
+                                for fname in os.listdir(data_dir)\
+                                    if not fname.startswith('.')])))
+    
+    # Splitting IDs into random training and test data
+    random.shuffle(file_ids)
+    
+    split_idx = int(train_ratio * len(file_ids)) 
+    train_ids = file_ids[:split_idx]
+    test_ids = file_ids[split_idx:]
+    
+    if verbose == 1:
+        print("Train data:")
+        
+    train_data = []
+    for idx, fid in enumerate(train_ids):
+        record = HealthRecord(fid, text_path = data_dir + fid + '.txt', 
+                              ann_path = data_dir + fid + '.ann', 
+                              tokenizer = tokenizer)
+        train_data.append(record)
+        if verbose == 1:
+            drawProgressBar(idx + 1, split_idx)
+    
+    if verbose == 1:
+        print('\n\nTest Data:')
+        
+    test_data = []
+    for idx, fid in enumerate(test_ids):
+        record = HealthRecord(fid, text_path = data_dir + fid + '.txt', 
+                              ann_path = data_dir + fid + '.ann', 
+                              tokenizer = tokenizer)
+        test_data.append(record)
+        if verbose == 1:
+            drawProgressBar(idx + 1, len(file_ids) - split_idx)
+        
+    return (train_data, test_data)
 
 def drawProgressBar(current, total, string = '', barLen = 20):
     '''
