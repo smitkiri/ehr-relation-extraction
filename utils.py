@@ -12,7 +12,6 @@ from pickle import dump, load
 from IPython.core.display import display, HTML
 from ehr import HealthRecord
 import random
-random.seed(0)
 
 TPL_HTML = '<span style = "background-color: {color}; border-radius: 5px;">&nbsp;{content}&nbsp;</span>'
 
@@ -103,6 +102,7 @@ def read_data(data_dir: str = 'data/', train_ratio: int = 0.8,
                                     if not fname.startswith('.')])))
     
     # Splitting IDs into random training and test data
+    random.seed(0)
     random.shuffle(file_ids)
     
     split_idx = int(train_ratio * len(file_ids)) 
