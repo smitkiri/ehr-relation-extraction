@@ -112,6 +112,9 @@ class HealthRecord:
         relation_backlog = []
         
         for line in raw_data:
+            if line.startswith('#'):
+                continue
+            
             line = line.split('\t')
             
             # Remove empty strings from list
@@ -336,6 +339,83 @@ class HealthRecord:
         return labels
     
     
+    def get_split_points(self, max_len: int = 510, 
+                         new_line_ind: List[str] = ['[', '#', '-', '>', ' '], 
+                         sent_end_ind: List[str] = ['.', '?', '!'] ) -> List[int]:
+        '''
+        Get the splitting points for tokens.
+        
+        > It includes as many paragraphs as it can within the 
+        max_len - 2 token limit. (2 less because BERT needs 
+                                  to add 2 special tokens)
+
+        > If it can't find a single complete paragraph, 
+        it will split on the last verifiable new line that 
+        starts with a new sentence.
+        
+        > If it can't find that as well, it splits on token max_len - 2.
+
+        Parameters
+        ----------
+        max_length : int, optional
+            Maximum number tokens in one example. The default is 510
+            for BERT.
+        
+        new_line_ind : List[str], optional
+            New line indicators. Strings other than numbers.
+            The default is ['[', '#', '-', '>', ' '].
+        
+        sent_end_ind : List[str], optional
+            Sentence end indicators. The default is ['.', '?', '!'].
+
+        Returns
+        -------
+        List[int]
+            Spliting indices, includes the first and last index. 
+            Need to add 1 to the end indices if accessing 
+            with list splicing.
+
+        '''
+        split_idx = [0]
+        curr_counter = 0
+        last_par_end_idx = 0
+        last_line_end_idx = 0
+    
+        for i in range(len(self.text)):
+            curr_counter = self.get_token_idx(i) - split_idx[-1]
+            
+            if curr_counter >= max_len:
+                # If not even a single paragraph has ended
+                if last_par_end_idx == 0 and last_line_end_idx != 0:
+                    split_idx.append(last_line_end_idx)
+                
+                elif last_par_end_idx != 0:
+                    split_idx.append(last_par_end_idx)
+                
+                else:
+                    split_idx.append(self.get_token_idx(i))
+    
+                curr_counter = 0
+                last_par_end_idx = 0
+                last_line_end_idx = 0
+    
+            if i < len(self.text) - 2 and self.text[i] == '\n':
+                if self.text[i + 1] == '\n':
+                    last_par_end_idx = self.get_token_idx(i - 1)
+                
+                if self.text[i + 1] == '.' or self.text[i + 1] == '*':
+                    last_par_end_idx = self.get_token_idx(i + 1)
+                
+                if (self.text[i + 1] in new_line_ind or\
+                        self.text[i + 1].isdigit() or\
+                            self.text[i - 1] in sent_end_ind):
+                    last_line_end_idx = self.get_token_idx(i)
+        
+        split_idx.append(len(self.tokens))
+        self.split_idx = split_idx
+        
+        return self.split_idx
+
     def get_annotations(self) -> AnnotationInfo:
         '''
         Get entities and relations in a dictionary.
