@@ -326,9 +326,9 @@ class HealthRecord:
         
         labels = ['O'] * len(self.tokens)
         
-        for ent in self.entities:
-            start_idx = self.get_token_idx(ent[0])
-            end_idx = self.get_token_idx(ent[1])
+        for ent in self.entities.values():
+            start_idx = self.get_token_idx(ent.range[0])
+            end_idx = self.get_token_idx(ent.range[1])
             
             for idx in range(start_idx, end_idx + 1):
                 if idx == start_idx:

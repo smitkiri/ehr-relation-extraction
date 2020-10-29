@@ -1,9 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Sun Jul 19 23:10:20 2020
-
-@author: Smit
-"""
 from typing import List, Tuple, Callable
 
 import os
@@ -136,28 +130,43 @@ def read_data(data_dir: str = 'data/', train_ratio: int = 0.8,
     return (train_data, test_data)
 
 
-def label_data(ehr_records, file):
-  with open(file, 'w') as f:
-    for record in ehr_records:
-      
-      split_idx = record.get_split_points()
-      labels = record.get_labels()
-      tokens = record.get_tokens()
+def generate_input_files(ehr_records, filename, max_len = 510):
+    '''
+    Write EHR records to a file.
 
-      start = split_idx[0]
-      end = split_idx[1]
+    Parameters
+    ----------
+    ehr_records : List[HealthRecord]
+        List of EHR records.
+    
+    filename : str
+        File name to write to.
+    
+    max_len : int, optional
+        Max length of an example. The default is 510.
 
-      for i in range(1, len(split_idx)):
-        for (token, label) in zip(tokens[start:end+1], labels[start:end+1]):
-          f.write('{} {} \n'.format(token, label))      
-
-        start = end + 1
-        if i != len(split_idx)-1:
-          end = split_idx[i+1]
-          f.write('\n')
-
-      f.write('\n')
-  print("Labeled file successfully saved in " + file)
+    '''
+    with open(filename, 'w') as f:
+      for record in ehr_records:
+        
+        split_idx = record.get_split_points(max_len = max_len)
+        labels = record.get_labels()
+        tokens = record.get_tokens()
+  
+        start = split_idx[0]
+        end = split_idx[1]
+  
+        for i in range(1, len(split_idx)):
+          for (token, label) in zip(tokens[start:end+1], labels[start:end+1]):
+            f.write('{} {}\n'.format(token, label))      
+  
+          start = end + 1
+          if i != len(split_idx)-1:
+            end = split_idx[i+1]
+            f.write('\n')
+  
+        f.write('\n')
+    print("Data successfully saved in " + filename)
 
 
 def drawProgressBar(current, total, string = '', barLen = 20):
