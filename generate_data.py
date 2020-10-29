@@ -39,7 +39,7 @@ parser.add_argument("--sep", type = str,
 
 args = parser.parse_args()
 
-labels = ['B-DRUG', 'I-DRUG' 'B-STR', 'I-STR', 'B-DUR', 'I-DUR' 
+labels = ['B-DRUG', 'I-DRUG', 'B-STR', 'I-STR', 'B-DUR', 'I-DUR',
           'B-ROU', 'I-ROU', 'B-FOR', 'I-FOR', 'B-ADE', 'I-ADE',
           'B-DOS', 'I-DOS', 'B-REA', 'I-REA', 'B-FRE', 'I-FRE', 'O']
 
