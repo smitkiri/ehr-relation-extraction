@@ -105,7 +105,7 @@ def main():
         output_labels = map(lambda x: x + '\n', labels)
         file.writelines(output_labels)
     
-    filenames = list(map(files.keys(), lambda x: x + '.' + args.ext))
+    filenames = list(map(lambda x: x + '.' + args.ext, list(files.keys())))
     print("\nGenerating files successful. Files generated: ", 
           ', '.join(filenames), ', labels.txt', sep = '')
     
