@@ -80,11 +80,12 @@ def main():
                       "include 'scispacy' and 'default'.")
         tokenizer = default_tokenizer
     
-    print("Reading data\n")
+    print("\nReading data\n")
     train_dev, test = read_data(data_dir = args.input_dir, 
                             train_ratio = 1 - args.test_split, 
                             tokenizer = tokenizer, verbose = 1)
     
+    print('\n\n')
     # Data is already shuffled, just split for dev set
     dev_split_idx = int((1 - args.dev_split) * len(train_dev))
     train = train_dev[:dev_split_idx]
@@ -104,8 +105,9 @@ def main():
         output_labels = map(lambda x: x + '\n', labels)
         file.writelines(output_labels)
     
+    filenames = list(map(files.keys(), lambda x: x + '.' + args.ext))
     print("\nGenerating files successful. Files generated: ", 
-          ', '.join(list(files.keys())), ', labels.txt', sep = '')
+          ', '.join(filenames), ', labels.txt', sep = '')
     
 if __name__ == '__main__':
     main()

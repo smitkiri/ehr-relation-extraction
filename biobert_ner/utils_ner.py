@@ -290,6 +290,7 @@ def convert_examples_to_features(
     features = []
     for (ex_index, example) in enumerate(examples):
         if ex_index % 10_000 == 0:
+            logger.info("Label map:", label_map, "\n\n")
             logger.info("Writing example %d of %d", ex_index, len(examples))
 
         tokens = []
@@ -368,7 +369,7 @@ def convert_examples_to_features(
         assert len(segment_ids) == max_seq_length
         assert len(label_ids) == max_seq_length
 
-        if ex_index < 5:
+        if ex_index < 2:
             logger.info("*** Example ***")
             logger.info("guid: %s", example.guid)
             logger.info("tokens: %s", " ".join([str(x) for x in tokens]))
