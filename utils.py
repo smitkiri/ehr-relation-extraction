@@ -130,7 +130,9 @@ def read_data(data_dir: str = 'data/', train_ratio: int = 0.8,
     return (train_data, test_data)
 
 
-def generate_input_files(ehr_records, filename, max_len = 510):
+def generate_input_files(ehr_records: List[HealthRecord], 
+                         filename: str, max_len:int = 510, 
+                         sep: str = ' '):
     '''
     Write EHR records to a file.
 
@@ -144,6 +146,9 @@ def generate_input_files(ehr_records, filename, max_len = 510):
     
     max_len : int, optional
         Max length of an example. The default is 510.
+        
+    sep : str, optional
+        Token-label separator. The default is a space.
 
     '''
     with open(filename, 'w') as f:
@@ -158,7 +163,7 @@ def generate_input_files(ehr_records, filename, max_len = 510):
   
         for i in range(1, len(split_idx)):
           for (token, label) in zip(tokens[start:end+1], labels[start:end+1]):
-            f.write('{} {}\n'.format(token, label))      
+            f.write('{}{}{}\n'.format(token, sep, label))      
   
           start = end + 1
           if i != len(split_idx)-1:

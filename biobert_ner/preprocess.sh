@@ -2,7 +2,7 @@
 MAX_LENGTH=510
 
 echo "***** Preprocessing Start *****"
-DATA_DIR=../dataset/
+DATA_DIR=./dataset/
 
 # Replace tab to space
 cat $DATA_DIR/train.tsv | tr '\t' ' ' > $DATA_DIR/train.txt.tmp

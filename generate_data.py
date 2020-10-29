@@ -6,28 +6,36 @@ import os
 
 parser = argparse.ArgumentParser()   
 parser.add_argument("--input_dir", type = str, 
-                    help = "Directory with txt and ann files", 
+                    help = "Directory with txt and ann files. Default is 'data/'.", 
                     default = "data/")
 
 parser.add_argument("--target_dir", type = str, 
-                    help = "Directory to save files", 
+                    help = "Directory to save files. Default is 'dataset/'.", 
                     default = 'dataset/')
 
 parser.add_argument("--max_seq_len", type = int, 
-                    help = "Maximum sequence length", 
+                    help = "Maximum sequence length. Default is 510.", 
                     default = 510)
 
 parser.add_argument("--dev_split", type = float, 
-                    help = "Ratio of dev data", 
+                    help = "Ratio of dev data. Default is 0.1", 
                     default = 0.1)
 
 parser.add_argument("--test_split", type = float, 
-                    help = "Ratio of test data", 
+                    help = "Ratio of test data. Default is 0.2", 
                     default = 0.2)
 
 parser.add_argument("--tokenizer", type = str,
-                    help = "The tokenizer to use. scispacy or default", 
+                    help = "The tokenizer to use. 'scispacy' or 'default'.", 
                     default = "scispacy")
+
+parser.add_argument("--ext", type = str, 
+                    help = "Extension of target file. Default is txt.", 
+                    default = "txt")
+
+parser.add_argument("--sep", type = str, 
+                    help = "Token-label separator. Default is a space.", 
+                    default = " ")
 
 args = parser.parse_args()
 
@@ -72,23 +80,24 @@ def main():
                       "include 'scispacy' and 'default'.")
         tokenizer = default_tokenizer
     
+    print("Reading data\n")
     train_dev, test = read_data(data_dir = args.input_dir, 
                             train_ratio = 1 - args.test_split, 
-                            tokenizer = tokenizer, verbose = 0)
+                            tokenizer = tokenizer, verbose = 1)
     
     # Data is already shuffled, just split for dev set
     dev_split_idx = int((1 - args.dev_split) * len(train_dev))
     train = train_dev[:dev_split_idx]
     devel = train_dev[dev_split_idx:]
     
-    files = {'train.txt': train, 'train_dev.txt': train_dev, 
-             'devel.txt': devel, 'test.txt': test}
+    files = {'train' : train, 'train_dev': train_dev, 
+             'devel': devel, 'test': test}
     
     # Generate train, dev, test files
     for filename, data in files.items():
         generate_input_files(ehr_records = data, 
-                         filename = args.target_dir + filename, 
-                         max_len = args.max_seq_len)
+                         filename = args.target_dir + filename + '.' + args.ext, 
+                         max_len = args.max_seq_len, sep = args.sep)
     
     # Generate labels file
     with open(args.target_dir + 'labels.txt', 'w') as file:
