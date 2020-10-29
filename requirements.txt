@@ -1,6 +1,7 @@
 spacy==2.3.2
 scispacy==0.2.5
 https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.2.5/en_ner_bc5cdr_md-0.2.5.tar.gz
-torch torchvision
+torch
+torchvision
 transformers==3.0.0
 numpy==1.19.2

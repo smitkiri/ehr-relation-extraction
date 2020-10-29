@@ -21,6 +21,7 @@ plots/
 data/
 processed_data/
 reports/
+biobert_ner/dataset/
 
 # IntelliJ files
 /annotating-ehr.iml
