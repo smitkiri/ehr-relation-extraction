@@ -1,16 +1,16 @@
 export SAVE_DIR=./output
 export DATA_DIR=../datasets
 
-export MAX_LENGTH=512
-export BATCH_SIZE=16
-export NUM_EPOCHS=3
+export MAX_LENGTH=256
+export BATCH_SIZE=8
+export NUM_EPOCHS=1
 export SAVE_STEPS=1000
 export SEED=0
 
 python run_ner.py \
     --data_dir ${DATA_DIR}/ \
     --labels ${DATA_DIR}/labels.txt \
-    --model_name_or_path dmis-lab/biobert-base-cased-v1.1 \
+    --model_name_or_path dmis-lab/biobert-large-cased-v1.1 \
     --output_dir ${SAVE_DIR}/ \
     --max_seq_length ${MAX_LENGTH} \
     --num_train_epochs ${NUM_EPOCHS} \

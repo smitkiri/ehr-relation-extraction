@@ -14,8 +14,8 @@ parser.add_argument("--target_dir", type = str,
                     default = 'dataset/')
 
 parser.add_argument("--max_seq_len", type = int, 
-                    help = "Maximum sequence length. Default is 510.", 
-                    default = 510)
+                    help = "Maximum sequence length. Default is 512.", 
+                    default = 512)
 
 parser.add_argument("--dev_split", type = float, 
                     help = "Ratio of dev data. Default is 0.1", 
@@ -26,7 +26,7 @@ parser.add_argument("--test_split", type = float,
                     default = 0.2)
 
 parser.add_argument("--tokenizer", type = str,
-                    help = "The tokenizer to use. 'scispacy' or 'default'.", 
+                    help = "The tokenizer to use. 'scispacy', 'biobert-base', 'biobert-large', 'default'.", 
                     default = "scispacy")
 
 parser.add_argument("--ext", type = str, 
@@ -43,19 +43,15 @@ labels = ['B-DRUG', 'I-DRUG', 'B-STR', 'I-STR', 'B-DUR', 'I-DUR',
           'B-ROU', 'I-ROU', 'B-FOR', 'I-FOR', 'B-ADE', 'I-ADE',
           'B-DOS', 'I-DOS', 'B-REA', 'I-REA', 'B-FRE', 'I-FRE', 'O']
 
-class Token:
-    def __init__(self, text):
-        self.text = text
-
 def default_tokenizer(sequence: str) -> List[str]:
     """A tokenizer that splits sequence by a space."""
     words = sequence.split(' ')
     tokens = []
-    for text in words:
-        if not text:
+    for word in words:
+        if not word:
             continue
         
-        tokens.append(Token(text))
+        tokens.append(word)
         
     return tokens
 
@@ -73,11 +69,29 @@ def main():
     elif args.tokenizer == "scispacy":
         import en_ner_bc5cdr_md
         tokenizer = en_ner_bc5cdr_md.load().tokenizer
+        
+    elif args.tokenizer == 'biobert-large':
+        from transformers import AutoTokenizer
+        biobert = AutoTokenizer.from_pretrained(
+            "dmis-lab/biobert-large-cased-v1.1")
+        
+        args.max_seq_len -= biobert.num_special_tokens_to_add()
+        tokenizer = biobert.tokenize
+        
     
+    elif args.tokenizer == 'biobert-base':
+        from transformers import AutoTokenizer
+        biobert = AutoTokenizer.from_pretrained(
+            "dmis-lab/biobert-base-cased-v1.1").tokenize
+        
+        args.max_seq_len -= biobert.num_special_tokens_to_add()
+        tokenizer = biobert.tokenize
+        
     else:
         warnings.warn("Tokenizer named " + args.tokenizer + " not found."
                       "Using default tokenizer instead. Acceptable values"
-                      "include 'scispacy' and 'default'.")
+                      "include 'scispacy', 'biobert-base', 'biobert-large',"
+                      "and 'default'.")
         tokenizer = default_tokenizer
     
     print("\nReading data\n")

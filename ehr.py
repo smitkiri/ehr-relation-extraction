@@ -220,7 +220,7 @@ class HealthRecord:
             # See if there are sub-tokens for the space-seperated word
             for token in sub_tokens:
                 token_to_org_map.append(idx)
-                all_doc_tokens.append(token.text)
+                all_doc_tokens.append(str(token))
         
         self.token_to_word_map = token_to_org_map
         self.word_to_token_map = org_to_token_map
