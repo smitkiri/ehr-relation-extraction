@@ -184,7 +184,7 @@ class HealthRecord:
         Computes the tokens and character <-> token index mappings
         for EHR text data.
         '''
-        self.tokens = self.tokenizer(self.text)
+        self.tokens = list(map(lambda x: str(x), self.tokenizer(self.text)))
         
         char_to_token_map = []
         token_to_char_map = []
@@ -204,8 +204,9 @@ class HealthRecord:
                
             # For SciSpacy, if there are multiple spaces, it removes
             # one and keeps the rest
-            if self.text[i] == ' ' and self.text[i + 1] == ' ':
+            if self.text[j] == ' ' and self.text[j + 1] == ' ':
                 char_to_token_map.append(char_to_token_map[-1])
+                j += 1
             
             # Go over each letter in token and original text
             while k < len(self.tokens[i]):
