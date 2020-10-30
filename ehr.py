@@ -181,7 +181,8 @@ class HealthRecord:
     
     def _compute_tokens(self) -> None:
         '''
-        Computes the tokens for EHR text data.
+        Computes the tokens and character <-> token index mappings
+        for EHR text data.
         '''
         self.tokens = self.tokenizer(self.text)
         
@@ -192,15 +193,23 @@ class HealthRecord:
         k = 0
         
         for i in range(len(self.tokens)):
+            # For BioBERT, a split within a word is denoted by ##
             if self.tokens[i].startswith("##"):
                 k += 2
             
-            while self.text[j].lower() != self.tokens[i][k]:
+            # Characters that are discarded from tokenization
+            while self.text[j].lower() != self.tokens[i][k].lower():
                 char_to_token_map.append(char_to_token_map[-1])
                 j += 1
+               
+            # For SciSpacy, if there are multiple spaces, it removes
+            # one and keeps the rest
+            if self.text[i] == ' ' and self.text[i + 1] == ' ':
+                char_to_token_map.append(char_to_token_map[-1])
             
+            # Go over each letter in token and original text
             while k < len(self.tokens[i]):
-                if self.text[j].lower() == self.tokens[i][k]:
+                if self.text[j].lower() == self.tokens[i][k].lower():
                     char_to_token_map.append(i)
                     j += 1
                     k += 1
@@ -210,6 +219,7 @@ class HealthRecord:
             token_to_char_map.append(j)
             k = 0
         
+        # Characters at the end which are discarded by tokenizer
         while j < len(self.text):
             char_to_token_map.append(char_to_token_map[-1])
             j += 1
