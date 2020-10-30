@@ -1,5 +1,5 @@
 export SAVE_DIR=./output
-export DATA_DIR=../datasets
+export DATA_DIR=./dataset
 
 export MAX_LENGTH=256
 export BATCH_SIZE=8

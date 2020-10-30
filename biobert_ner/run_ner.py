@@ -280,7 +280,12 @@ def main():
         )
 
         predictions, label_ids, metrics = trainer.predict(test_dataset)
+        logger.info("Predictions shape: " + str(predictions.shape))
+
         preds_list, _ = align_predictions(predictions, label_ids)
+        logger.info("Align predictions length: " + str(len(preds_list)))
+        for i, p in enumerate(preds_list):
+            logger.info("Batch {} len: {}".format(i, len(p)))
         
         # Save predictions
         output_test_results_file = os.path.join(training_args.output_dir, "test_results.txt")

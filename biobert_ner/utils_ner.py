@@ -243,6 +243,8 @@ def read_examples_from_file(data_dir, mode: Union[Split, str]) -> List[InputExam
         for line in f:
             if line.startswith("-DOCSTART-") or line == "" or line == "\n":
                 if words:
+                    if len(words) > 128:
+                        logger.info("Exceeds max len: " + str(len(words)) )
                     examples.append(InputExample(guid=f"{mode}-{guid_index}", words=words, labels=labels))
                     guid_index += 1
                     words = []
@@ -290,23 +292,30 @@ def convert_examples_to_features(
     features = []
     for (ex_index, example) in enumerate(examples):
         if ex_index % 10_000 == 0:
-            logger.info("Label map:", label_map, "\n\n")
             logger.info("Writing example %d of %d", ex_index, len(examples))
 
         tokens = []
         label_ids = []
         for word, label in zip(example.words, example.labels):
-            word_tokens = tokenizer.tokenize(word)
-
+            tokens.append(word)
+            
+            if word.startswith('##'):
+                label_ids.append(pad_token_label_id)
+            else:
+                label_ids.append(label_map[label])
+            
+            #word_tokens = tokenizer.tokenize(word)
+            
             # bert-base-multilingual-cased sometimes output "nothing ([]) when calling tokenize with just a space.
-            if len(word_tokens) > 0:
-                tokens.extend(word_tokens)
+            #if len(word_tokens) > 0:
+                #tokens.extend(word_tokens)
                 # Use the real label id for the first token of the word, and padding ids for the remaining tokens
-                label_ids.extend([label_map[label]] + [pad_token_label_id] * (len(word_tokens) - 1))
+                #label_ids.extend([label_map[label]] + [pad_token_label_id] * (len(word_tokens) - 1))
 
         # Account for [CLS] and [SEP] with "- 2" and with "- 3" for RoBERTa.
         special_tokens_count = tokenizer.num_special_tokens_to_add()
         if len(tokens) > max_seq_length - special_tokens_count:
+            logger.info("%d, Max seq len exceeded truncating." % len(tokens))
             tokens = tokens[: (max_seq_length - special_tokens_count)]
             label_ids = label_ids[: (max_seq_length - special_tokens_count)]
 
