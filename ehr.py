@@ -50,15 +50,13 @@ class HealthRecord:
         self.text = self._read_ehr(text_path)
         self.is_training = is_training
         
-        self.char_to_word_map: List[int] = []
-        self.word_to_token_map: List[int] = []
-        self.token_to_word_map: List[int] = []
+        self.char_to_token_map: List[int] = []
+        self.token_to_char_map: List[int] = []
         self.set_tokenizer(tokenizer)
         
         if ann_path is not None:
             annotations = self._extract_annotations(ann_path)
             self.entities, self.relations = annotations
-            self._compute_char_to_word_idx()
         
         else:
             self.entities = None
@@ -180,52 +178,47 @@ class HealthRecord:
         return entities, relations
     
 
-    def _compute_char_to_word_idx(self) -> None:
-        '''
-        Internal function that computes character to word index map.
-
-        It is a list which maps each character index to a word index
-        Length of this list is equal to the number of characters
-        in the text.
-        '''
-        char_to_word = []
-        words = re.split('\n| |\t', self.text)
-
-        for idx in range(len(words)):
-            # The space next to a word will be considered as part of that word itself
-            char_to_word = char_to_word + [idx] * (len(words[idx]) + 1)
-
-        # There is no space after last word, so we need to remove the last element
-        char_to_word = char_to_word[:-1]
-
-        # Check for errors
-        assert len(char_to_word) == len(self.text)
-
-        self.char_to_word_map = char_to_word
-    
     
     def _compute_tokens(self) -> None:
         '''
         Computes the tokens for EHR text data.
         '''
-        token_to_org_map = []
-        org_to_token_map = []
-        all_doc_tokens = []
+        self.tokens = self.tokenizer(self.text)
         
-        words = re.split('\n| |\t', self.text)
-    
-        for idx, word in enumerate(words):
-            org_to_token_map.append(len(all_doc_tokens))
-            sub_tokens = self.tokenizer(word)
-            # See if there are sub-tokens for the space-seperated word
-            for token in sub_tokens:
-                token_to_org_map.append(idx)
-                all_doc_tokens.append(str(token))
+        char_to_token_map = []
+        token_to_char_map = []
         
-        self.token_to_word_map = token_to_org_map
-        self.word_to_token_map = org_to_token_map
-        self.tokens = all_doc_tokens
+        j = 0
+        k = 0
         
+        for i in range(len(self.tokens)):
+            if self.tokens[i].startswith("##"):
+                k += 2
+            
+            while self.text[j].lower() != self.tokens[i][k]:
+                char_to_token_map.append(char_to_token_map[-1])
+                j += 1
+            
+            while k < len(self.tokens[i]):
+                if self.text[j].lower() == self.tokens[i][k]:
+                    char_to_token_map.append(i)
+                    j += 1
+                    k += 1
+                else:
+                    raise Exception("Error computing token to char map.")
+            
+            token_to_char_map.append(j)
+            k = 0
+        
+        while j < len(self.text):
+            char_to_token_map.append(char_to_token_map[-1])
+            j += 1
+        
+        assert len(char_to_token_map) == len(self.text)
+        assert len(token_to_char_map) == len(self.tokens)
+        
+        self.char_to_token_map = char_to_token_map
+        self.token_to_char_map = token_to_char_map
     
     def get_tokens(self) -> List[str]:
         '''
@@ -274,10 +267,7 @@ class HealthRecord:
         if self.tokenizer is None:
             raise AttributeError("Tokenizer not set.")
         
-        word_idx = self.char_to_word_map[char_idx]
-        token_idx = self.word_to_token_map[word_idx]
-        
-        #token_idx = self.char_to_token_map[char_idx]
+        token_idx = self.char_to_token_map[char_idx]
         
         return token_idx
     
@@ -300,10 +290,7 @@ class HealthRecord:
         if self.tokenizer is None:
             raise AttributeError("Tokenizer not set.")
         
-        word_idx = self.token_to_word_map[token_idx]
-        char_idx = self.char_to_word_map.index(word_idx)
-        
-        #char_idx = self.char_to_token_map.index(token_idx)
+        char_idx = self.token_to_char_map[token_idx]
         
         return char_idx
     

@@ -82,7 +82,7 @@ def main():
     elif args.tokenizer == 'biobert-base':
         from transformers import AutoTokenizer
         biobert = AutoTokenizer.from_pretrained(
-            "dmis-lab/biobert-base-cased-v1.1").tokenize
+            "dmis-lab/biobert-base-cased-v1.1")
         
         args.max_seq_len -= biobert.num_special_tokens_to_add()
         tokenizer = biobert.tokenize
