@@ -188,6 +188,8 @@ class HealthRecord:
         
         char_to_token_map = []
         token_to_char_map = []
+        token_start_idx = 0
+        token_end_idx = 0
         
         j = 0
         k = 0
@@ -208,6 +210,7 @@ class HealthRecord:
                 char_to_token_map.append(char_to_token_map[-1])
                 j += 1
             
+            token_start_idx = j
             # Go over each letter in token and original text
             while k < len(self.tokens[i]):
                 if self.text[j].lower() == self.tokens[i][k].lower():
@@ -217,7 +220,8 @@ class HealthRecord:
                 else:
                     raise Exception("Error computing token to char map.")
             
-            token_to_char_map.append(j)
+            token_end_idx = j
+            token_to_char_map.append((token_start_idx, token_end_idx))
             k = 0
         
         # Characters at the end which are discarded by tokenizer

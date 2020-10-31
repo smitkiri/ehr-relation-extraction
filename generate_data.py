@@ -1,5 +1,5 @@
 import argparse
-from utils import read_data, generate_input_files
+from utils import read_data, generate_input_files, save_pickle
 from typing import List
 import warnings
 import os
@@ -113,13 +113,18 @@ def main():
         generate_input_files(ehr_records = data, 
                          filename = args.target_dir + filename + '.' + args.ext, 
                          max_len = args.max_seq_len, sep = args.sep)
+        save_pickle(args.target_dir + filename, data)
     
     # Generate labels file
     with open(args.target_dir + 'labels.txt', 'w') as file:
         output_labels = map(lambda x: x + '\n', labels)
         file.writelines(output_labels)
     
-    filenames = list(map(lambda x: x + '.' + args.ext, list(files.keys())))
+    filenames = [name for files in map(
+            lambda x: [x + '.' + args.ext, x + '.pkl'], 
+            list(files.keys()))
+        for name in files]
+    
     print("\nGenerating files successful. Files generated: ", 
           ', '.join(filenames), ', labels.txt', sep = '')
     

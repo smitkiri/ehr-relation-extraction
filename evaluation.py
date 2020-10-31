@@ -231,7 +231,9 @@ def ner_report(predicted: List[Union[dict, List[Entity]]],
     Parameters
     ----------
     predicted : List[Union[dict, List[Entity]]]
-        Entity predictions for all documents.
+        Entity predictions for all documents. If it is of type dict, 
+        keys should indicate entities and values would be 
+        predicted ranges.
         
     actual : List[HealthRecord]
         Actual list of HealthRecord objects for all documents.
