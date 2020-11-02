@@ -9,6 +9,10 @@ parser.add_argument("--input_dir", type = str,
                     help = "Directory with txt and ann files. Default is 'data/'.", 
                     default = "data/")
 
+parser.add_argument("--ade_dir", type = str, 
+                    help = "Directory with ADE corpus. Default is None.", 
+                    default = None)
+
 parser.add_argument("--target_dir", type = str, 
                     help = "Directory to save files. Default is 'dataset/'.", 
                     default = 'dataset/')
@@ -77,7 +81,7 @@ def main():
         
         args.max_seq_len -= biobert.num_special_tokens_to_add()
         tokenizer = biobert.tokenize
-        
+      
     
     elif args.tokenizer == 'biobert-base':
         from transformers import AutoTokenizer
@@ -96,8 +100,22 @@ def main():
     
     print("\nReading data\n")
     train_dev, test = read_data(data_dir = args.input_dir, 
-                            train_ratio = 1 - args.test_split, 
-                            tokenizer = tokenizer, verbose = 1)
+                                train_ratio = 1 - args.test_split, 
+                                tokenizer = tokenizer, verbose = 1)
+
+    if ade_dir is not None:
+          ade_train_dev, ade_test = read_ade_data(ade_data_dir = args.ade_dir, 
+                                                  train_ratio = 1 - args.test_split, 
+                                                  tokenizer = tokenizer, verbose = 1)
+
+          ade_dev_split_idx = int((1 - args.dev_split) * len(ade_train_dev))
+          ade_train = ade_train_dev[:ade_dev_split_idx]
+          ade_devel = ade_train_dev[ade_dev_split_idx:]                                        
+
+    else:
+      ade_train_dev = None
+      ade_test = None
+      ade_devel = None
     
     print('\n\n')
     # Data is already shuffled, just split for dev set
@@ -105,15 +123,15 @@ def main():
     train = train_dev[:dev_split_idx]
     devel = train_dev[dev_split_idx:]
     
-    files = {'train' : train, 'train_dev': train_dev, 
-             'devel': devel, 'test': test}
+    files = {'train' : (train, ade_train), 'train_dev': (train_dev, ade_train_dev), 
+             'devel': (devel, ade_devel), 'test': (test, ade_test)}
     
     # Generate train, dev, test files
     for filename, data in files.items():
-        generate_input_files(ehr_records = data, 
-                         filename = args.target_dir + filename + '.' + args.ext, 
-                         max_len = args.max_seq_len, sep = args.sep)
-        save_pickle(args.target_dir + filename, data)
+        generate_input_files(ehr_records = data[0], ade_records = data[1],
+                            filename = args.target_dir + filename + '.' + args.ext, 
+                            max_len = args.max_seq_len, sep = args.sep)
+        save_pickle(args.target_dir + filename, {"EHR": data[0], "ADE": data[1]})
     
     # Generate labels file
     with open(args.target_dir + 'labels.txt', 'w') as file:
