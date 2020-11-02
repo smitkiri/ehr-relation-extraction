@@ -217,7 +217,7 @@ def main():
                 if label_ids[i, j] != nn.CrossEntropyLoss().ignore_index:
                     out_label_list[i].append(label_map[label_ids[i][j]])
                     preds_list[i].append(label_map[preds[i][j]])
-
+                    
         return preds_list, out_label_list
 
     def compute_metrics(p: EvalPrediction) -> Dict:
@@ -283,9 +283,6 @@ def main():
         logger.info("Predictions shape: " + str(predictions.shape))
 
         preds_list, _ = align_predictions(predictions, label_ids)
-        logger.info("Align predictions length: " + str(len(preds_list)))
-        for i, p in enumerate(preds_list):
-            logger.info("Batch {} len: {}".format(i, len(p)))
         
         # Save predictions
         output_test_results_file = os.path.join(training_args.output_dir, "test_results.txt")
@@ -312,10 +309,9 @@ def main():
                             writer.write(output_line)
                         else:
                             logger.warning(
-                                "Maximum sequence length exceeded: No prediction for '%s'.", line.split()[0]
+                                "Maximum sequence length exceeded: Example %d", example_id
                             )
             
-
     return results
 
 

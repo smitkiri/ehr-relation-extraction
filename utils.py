@@ -177,12 +177,12 @@ def read_ade_data(ade_data_dir: str = 'ade_data/',
 
     ade_train_data = process_ade_files(ade_data[:ade_split_idx])
     if verbose == 1:
-      print("ADE Train data:")
+      print("\n\nADE Train data:")
       print("Done.")
 
     ade_test_data = process_ade_files(ade_data[ade_split_idx:])
     if verbose == 1:
-      print("\n\nADE Test data:")
+      print("\nADE Test data:")
       print("Done.")
 
 

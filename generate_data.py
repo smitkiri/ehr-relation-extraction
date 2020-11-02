@@ -1,5 +1,5 @@
 import argparse
-from utils import read_data, generate_input_files, save_pickle
+from utils import read_data, generate_input_files, save_pickle, read_ade_data
 from typing import List
 import warnings
 import os
@@ -103,10 +103,10 @@ def main():
                                 train_ratio = 1 - args.test_split, 
                                 tokenizer = tokenizer, verbose = 1)
 
-    if ade_dir is not None:
+    if args.ade_dir is not None:
           ade_train_dev, ade_test = read_ade_data(ade_data_dir = args.ade_dir, 
                                                   train_ratio = 1 - args.test_split, 
-                                                  tokenizer = tokenizer, verbose = 1)
+                                                  verbose = 1)
 
           ade_dev_split_idx = int((1 - args.dev_split) * len(ade_train_dev))
           ade_train = ade_train_dev[:ade_dev_split_idx]
@@ -117,7 +117,7 @@ def main():
       ade_test = None
       ade_devel = None
     
-    print('\n\n')
+    print('\n')
     # Data is already shuffled, just split for dev set
     dev_split_idx = int((1 - args.dev_split) * len(train_dev))
     train = train_dev[:dev_split_idx]
