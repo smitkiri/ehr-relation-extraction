@@ -64,18 +64,9 @@ def scispacy_plus_tokenizer(sequence: str) -> List[str]:
     Runs the scispacy tokenizer and removes all tokens with
     just whitespace characters
     """
-    import en_ner_bc5cdr_md
-    tokenizer = en_ner_bc5cdr_md.load().tokenizer
-    
-    tokens = []
-    scispacy_tokens = tokenizer(sequence)
-    
-    for t in scispacy_tokens:
-        if ' ' in t or '\n' in t or '\t' in t:
-            continue
-        else:
-            tokens.append(t)
-            
+    scispacy_tokens = list(map(lambda x: str(x), scispacy_tok(sequence)))
+    tokens = filter(lambda t: not (' ' in t or '\n' in t or '\t' in t), scispacy_tokens)
+
     return tokens
     
 
@@ -95,6 +86,10 @@ def main():
         tokenizer = en_ner_bc5cdr_md.load().tokenizer
     
     elif args.tokenizer == 'scispacy_plus':
+        import en_ner_bc5cdr_md
+        global scispacy_tok 
+        scispacy_tok = en_ner_bc5cdr_md.load().tokenizer
+        
         tokenizer = scispacy_plus_tokenizer
         
     elif args.tokenizer == 'biobert-large':
@@ -137,6 +132,7 @@ def main():
 
     else:
       ade_train_dev = None
+      ade_train = None
       ade_test = None
       ade_devel = None
     
