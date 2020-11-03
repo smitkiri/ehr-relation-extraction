@@ -30,7 +30,7 @@ parser.add_argument("--test_split", type = float,
                     default = 0.2)
 
 parser.add_argument("--tokenizer", type = str,
-                    help = "The tokenizer to use. 'scispacy', 'biobert-base', 'biobert-large', 'default'.", 
+                    help = "The tokenizer to use. 'scispacy', 'scispacy_plus', 'biobert-base', 'biobert-large', 'default'.", 
                     default = "scispacy")
 
 parser.add_argument("--ext", type = str, 
@@ -59,6 +59,26 @@ def default_tokenizer(sequence: str) -> List[str]:
         
     return tokens
 
+def scispacy_plus_tokenizer(sequence: str) -> List[str]:
+    """
+    Runs the scispacy tokenizer and removes all tokens with
+    just whitespace characters
+    """
+    import en_ner_bc5cdr_md
+    tokenizer = en_ner_bc5cdr_md.load().tokenizer
+    
+    tokens = []
+    scispacy_tokens = tokenizer(sequence)
+    
+    for t in scispacy_tokens:
+        if ' ' in t or '\n' in t or '\t' in t:
+            continue
+        else:
+            tokens.append(t)
+            
+    return tokens
+    
+
 def main():
     
     if args.target_dir[-1] != '/':
@@ -73,6 +93,9 @@ def main():
     elif args.tokenizer == "scispacy":
         import en_ner_bc5cdr_md
         tokenizer = en_ner_bc5cdr_md.load().tokenizer
+    
+    elif args.tokenizer == 'scispacy_plus':
+        tokenizer = scispacy_plus_tokenizer
         
     elif args.tokenizer == 'biobert-large':
         from transformers import AutoTokenizer
