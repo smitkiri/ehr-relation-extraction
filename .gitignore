@@ -21,7 +21,11 @@ plots/
 data/
 processed_data/
 reports/
-biobert_ner/dataset/
+biobert_ner/dataset*/
+biobert_ner/output*/
+bilstm-crf_ner/results/
+ade_corpus/
+test_data/
 
 # IntelliJ files
 /annotating-ehr.iml
@@ -29,3 +33,5 @@ biobert_ner/dataset/
 
 # Scratch files
 Scratch.ipynb
+Scrap.ipynb
+Untitled*.ipynb
