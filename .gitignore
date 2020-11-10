@@ -17,7 +17,6 @@ instance/
 
 # Data files
 training_20180910.zip
-plots/
 data/
 processed_data/
 reports/
