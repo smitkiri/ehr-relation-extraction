@@ -25,6 +25,7 @@ biobert_ner/output*/
 bilstm-crf_ner/results/
 ade_corpus/
 test_data/
+runs/
 
 # IntelliJ files
 /annotating-ehr.iml

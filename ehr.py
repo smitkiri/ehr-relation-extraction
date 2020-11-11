@@ -1,5 +1,5 @@
 from annotations import Entity, Relation
-from typing import List, Dict, TypedDict, Tuple, Callable
+from typing import List, Dict, TypedDict, Tuple, Callable, Optional
 import warnings
 import numpy
 import re
@@ -17,8 +17,9 @@ class HealthRecord:
     '''
     Objects that represent a single electronic health record
     '''
-    def __init__(self, record_id: str, text_path: str, 
-                 ann_path: str = None,
+    def __init__(self, record_id: str, text_path: Optional[str], 
+                 ann_path: Optional[str] = None,
+                 text: Optional[str] = None,
                  tokenizer: Callable[[str], List[str]] = None,
                  is_training: bool = True) -> None:
         '''
@@ -34,6 +35,10 @@ class HealthRecord:
         
         ann_path : str, optional
             Path for the annotation file. The default is None.
+            
+        text: str
+            If text_path is not specified, the actual text for the
+            record
         
         tokenizer: Callable[[str], List[str]], optional
             The tokenizer function to use. The default is None.
@@ -46,9 +51,17 @@ class HealthRecord:
             raise AttributeError("Annotation path needs to be "
                                  "specified for training example.")
         
+        if text_path is None and text is None:
+            raise AttributeError("Either text or text path must be "
+                                 "specified.")
+        
         self.record_id = record_id
-        self.text = self._read_ehr(text_path)
         self.is_training = is_training
+        
+        if text_path is not None:
+            self.text = self._read_ehr(text_path)
+        else:
+            self.text = text
         
         self.char_to_token_map: List[int] = []
         self.token_to_char_map: List[int] = []
