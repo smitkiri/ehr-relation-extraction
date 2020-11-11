@@ -15,27 +15,27 @@ from typing import List, Tuple
 
 BIOBERT_SEQ_LEN = 128
 
-labels = get_labels('biobert_ner/dataset_two_ade/labels.txt')
-label_map = {i: label for i, label in enumerate(labels)}
-num_labels = len(labels)
+biobert_labels = get_labels('biobert_ner/dataset_two_ade/labels.txt')
+biobert_label_map = {i: label for i, label in enumerate(biobert_labels)}
+num_labels = len(biobert_labels)
 
-config = AutoConfig.from_pretrained(
+biobert_config = AutoConfig.from_pretrained(
     'biobert_ner/output_two_ade/config.json',
     num_labels=num_labels,
-    id2label=label_map,
-    label2id={label: i for i, label in enumerate(labels)})
+    id2label=biobert_label_map,
+    label2id={label: i for i, label in enumerate(biobert_labels)})
 
 biobert_tokenizer = AutoTokenizer.from_pretrained(
     "dmis-lab/biobert-base-cased-v1.1")
 
-model = AutoModelForTokenClassification.from_pretrained(
+biobert_model = AutoModelForTokenClassification.from_pretrained(
     "biobert_ner/output_two_ade/pytorch_model.bin",
-    config = config)
+    config = biobert_config)
 
-training_args = TrainingArguments(output_dir = "output", 
+biobert_training_args = TrainingArguments(output_dir = "output", 
                                   do_predict = True)
 
-trainer = Trainer(model = model, args = training_args)
+biobert_trainer = Trainer(model = biobert_model, args = biobert_training_args)
 
 def align_predictions(predictions: np.ndarray) -> List[List[str]]:
     """
@@ -58,7 +58,7 @@ def align_predictions(predictions: np.ndarray) -> List[List[str]]:
 
     for i in range(batch_size):
         for j in range(seq_len):
-            preds_list[i].append(label_map[preds[i][j]])
+            preds_list[i].append(biobert_label_map[preds[i][j]])
 
     return preds_list
 
@@ -149,7 +149,7 @@ def get_biobert_predictions(test_ehr: HealthRecord) -> List[Tuple[str, int, int]
     
     input_features = convert_examples_to_features(
         examples, 
-        labels, 
+        biobert_labels, 
         max_seq_length = BIOBERT_SEQ_LEN, 
         tokenizer = biobert_tokenizer, 
         cls_token_at_end = False, 
@@ -162,7 +162,7 @@ def get_biobert_predictions(test_ehr: HealthRecord) -> List[Tuple[str, int, int]
         pad_token_segment_id = biobert_tokenizer.pad_token_type_id,
         pad_token_label_id = nn.CrossEntropyLoss().ignore_index)
     
-    predictions, _, _ = trainer.predict(input_features)
+    predictions, _, _ = biobert_trainer.predict(input_features)
     predictions = align_predictions(predictions)
     pred_entities = []
     for idx in range(len(split_points) - 1):
@@ -190,6 +190,6 @@ def get_ner_predictions(ehr_record: str, model_name: str = "biobert"):
     
     else:
         raise AttributeError("Accepted model names include 'biobert' "
-                             "'bilstm'.")
+                             "and 'bilstm'.")
     
     return predictions
