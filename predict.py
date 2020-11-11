@@ -9,8 +9,8 @@ from biobert_ner.utils_ner import (convert_examples_to_features,
                                    get_labels)
 
 from bilstm-crf_ner.model.config import Config as BiLSTMConfig
-from bilstm-crf_ner.model.ner_model import BiLSTMModel
-from bilstm-crf_ner.model.ner_learner import BiLSTMLearner
+from bilstm-crf_ner.model.ner_model import NERModel as BiLSTMModel
+from bilstm-crf_ner.model.ner_learner import NERLearner as BiLSTMLearner
 
 import numpy as np
 from torch import nn
