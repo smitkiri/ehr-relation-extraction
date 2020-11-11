@@ -275,7 +275,7 @@ class NERLearner(object):
         self.logger.info("Train Loss: %.3f, Train Accuracy: %.3f%% (%d/%d)" %(train_loss/(total_step+1), 100.*correct/total, correct, total) )
 
 
-    def test(self, nbatches_val, val_generator, fine_tune=False):
+    def test(self, nbatches_val, val_generator, fine_tune=False, evaluate=False):
         self.model.eval()
         accs = []
         test_loss = 0
@@ -329,12 +329,13 @@ class NERLearner(object):
             # Callbacks
             test_loss += loss.item()
             predictions = self.criterion.decode(outputs, mask=mask)
-            write_test_preds(
-                input_tokens,
-                predictions,
-                self.config.vocab_tags,
-                self.config.filename_test_preds
-            )
+            if evaluate:
+                write_test_preds(
+                    input_tokens,
+                    predictions,
+                    self.config.vocab_tags,
+                    self.config.filename_test_preds
+                )
             masked_targets = mask_targets(targets, sequence_lengths)
 
             for lab, lab_pred in zip(masked_targets, predictions):
@@ -362,7 +363,7 @@ class NERLearner(object):
         nbatches_test, test_generator = self.batch_iter(test, batch_size,
                                                         return_lengths=True)
         self.logger.info('Evaluating on test set')
-        self.test(nbatches_test, test_generator)
+        self.test(nbatches_test, test_generator, fine_tune=False, evaluate=True)
 
     def predict_batch(self, words, sequence_lengths):
         self.model.eval()
@@ -412,28 +413,23 @@ class NERLearner(object):
         predictions = [p[:i] for p, i in zip(predictions, sequence_lengths)]
         return predictions
 
-    def predict(self, sentences):
+    def predict(self, words_raw):
         """Returns list of tags
 
         Args:
-            words_raw: list of words (string), just one sentence (no batch)
+            words_raw: list of words (string)
 
         Returns:
-            preds: list of tags (string), one for each word in the sentence
+            preds: list of tags (string)
 
         """
-        nlp = spacy.load('en')
-        doc = nlp(sentences)
-        words_raw = [[token.text for token in sent] for sent in doc.sents]
-        sequence_lengths = [len(sent) for sent in doc.sents]
+
+        sequence_lengths = [len(p) for p in words_raw]
+
         if self.use_elmo:
             words = words_raw
         else:
             words = [[self.config.processing_word(w) for w in s] for s in words_raw]
-            # print(words)
-            # raise NameError('testing')
-            # if type(words[0]) == tuple:
-            #     words = zip(*words)
 
         pred_ids = self.predict_batch(words, sequence_lengths)
         preds = [[self.idx_to_tag[idx.item() if isinstance(idx, torch.Tensor) else idx]  for idx in s] for s in pred_ids]

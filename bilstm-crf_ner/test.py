@@ -29,7 +29,7 @@ def main():
     if len(sys.argv) == 1:
         print("No arguments given. Running full test")
         sys.argv.append("eval")
-        sys.argv.append("pred")
+        # sys.argv.append("pred")
 
     if sys.argv[1] == "eval":
         # create datasets
@@ -37,15 +37,15 @@ def main():
                              config.processing_tag, config.max_iter)
         learn.evaluate(test)
 
-    if sys.argv[1] == "pred" or sys.argv[2] == "pred":
-        try:
-            sent = (sys.argv[2] if sys.argv[1] == "pred" else sys.argv[3])
-        except IndexError:
-            sent = "Peter Johnson lives in Los Angeles."
+    # if sys.argv[1] == "pred" or sys.argv[2] == "pred":
+    #     try:
+    #         sent = (sys.argv[2] if sys.argv[1] == "pred" else sys.argv[3])
+    #     except IndexError:
+    #         sent = "Peter Johnson lives in Los Angeles."
 
-        print("Predicting sentence: ", sent)
-        pred = learn.predict(sent)
-        print(pred)
+    #     print("Predicting sentence: ", sent)
+    #     pred = learn.predict(sent)
+    #     print(pred)
 
 
 

@@ -7,6 +7,11 @@ from transformers import (AutoModelForTokenClassification,
 from biobert_ner.utils_ner import (convert_examples_to_features,
                                    InputExample,
                                    get_labels)
+
+from bilstm-crf_ner.model.config import Config as BiLSTMConfig
+from bilstm-crf_ner.model.ner_model import BiLSTMModel
+from bilstm-crf_ner.model.ner_learner import BiLSTMLearner
+
 import numpy as np
 from torch import nn
 from ehr import HealthRecord
@@ -36,6 +41,14 @@ biobert_training_args = TrainingArguments(output_dir = "output",
                                   do_predict = True)
 
 biobert_trainer = Trainer(model = biobert_model, args = biobert_training_args)
+
+
+BILSTM_SEQ_LEN = 512
+
+bilstm_config = BiLSTMConfig()
+bilstm_model = BiLSTMModel(bilstm_config)
+bilstm_learn = BiLSTMLearner(bilstm_config, bilstm_model)
+bilstm_learn.load()
 
 def align_predictions(predictions: np.ndarray) -> List[List[str]]:
     """
@@ -175,7 +188,24 @@ def get_biobert_predictions(test_ehr: HealthRecord) -> List[Tuple[str, int, int]
     return pred_entities
 
 def get_bilstm_predictions(test_ehr: HealthRecord) -> List[Tuple[str, int, int]]:
-    pass
+    split_points = test_ehr.get_split_points(max_len = BILSTM_SEQ_LEN)
+    examples = []
+
+    for idx in range(len(split_points) - 1):
+        words = test_ehr.tokens[split_points[idx]:split_points[idx + 1]]
+        examples.append(words)
+
+    predictions = bilstm_learn.predict(examples)
+
+    pred_entities = []
+    for idx in range(len(split_points) - 1):
+        chunk_pred = get_chunks(predictions[idx])
+        for ent in chunk_pred:
+            pred_entities.append((ent[0],
+                                  test_ehr.get_char_idx(split_points[idx] + ent[1] - 1)[0],
+                                  test_ehr.get_char_idx(split_points[idx] + ent[2] - 1)[1]))
+
+    return pred_entities
 
 
 def get_ner_predictions(ehr_record: str, model_name: str = "biobert"):
