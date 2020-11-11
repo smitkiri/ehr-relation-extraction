@@ -4,45 +4,6 @@ from typing import List
 import warnings
 import os
 
-parser = argparse.ArgumentParser()   
-parser.add_argument("--input_dir", type = str, 
-                    help = "Directory with txt and ann files. Default is 'data/'.", 
-                    default = "data/")
-
-parser.add_argument("--ade_dir", type = str, 
-                    help = "Directory with ADE corpus. Default is None.", 
-                    default = None)
-
-parser.add_argument("--target_dir", type = str, 
-                    help = "Directory to save files. Default is 'dataset/'.", 
-                    default = 'dataset/')
-
-parser.add_argument("--max_seq_len", type = int, 
-                    help = "Maximum sequence length. Default is 512.", 
-                    default = 512)
-
-parser.add_argument("--dev_split", type = float, 
-                    help = "Ratio of dev data. Default is 0.1", 
-                    default = 0.1)
-
-parser.add_argument("--test_split", type = float, 
-                    help = "Ratio of test data. Default is 0.2", 
-                    default = 0.2)
-
-parser.add_argument("--tokenizer", type = str,
-                    help = "The tokenizer to use. 'scispacy', 'scispacy_plus', 'biobert-base', 'biobert-large', 'default'.", 
-                    default = "scispacy")
-
-parser.add_argument("--ext", type = str, 
-                    help = "Extension of target file. Default is txt.", 
-                    default = "txt")
-
-parser.add_argument("--sep", type = str, 
-                    help = "Token-label separator. Default is a space.", 
-                    default = " ")
-
-args = parser.parse_args()
-
 labels = ['B-DRUG', 'I-DRUG', 'B-STR', 'I-STR', 'B-DUR', 'I-DUR',
           'B-ROU', 'I-ROU', 'B-FOR', 'I-FOR', 'B-ADE', 'I-ADE',
           'B-DOS', 'I-DOS', 'B-REA', 'I-REA', 'B-FRE', 'I-FRE', 'O']
@@ -71,6 +32,45 @@ def scispacy_plus_tokenizer(sequence: str) -> List[str]:
     
 
 def main():
+    parser = argparse.ArgumentParser()   
+    parser.add_argument("--input_dir", type = str, 
+                        help = "Directory with txt and ann files. Default is 'data/'.", 
+                        default = "data/")
+    
+    parser.add_argument("--ade_dir", type = str, 
+                        help = "Directory with ADE corpus. Default is None.", 
+                        default = None)
+    
+    parser.add_argument("--target_dir", type = str, 
+                        help = "Directory to save files. Default is 'dataset/'.", 
+                        default = 'dataset/')
+    
+    parser.add_argument("--max_seq_len", type = int, 
+                        help = "Maximum sequence length. Default is 512.", 
+                        default = 512)
+    
+    parser.add_argument("--dev_split", type = float, 
+                        help = "Ratio of dev data. Default is 0.1", 
+                        default = 0.1)
+    
+    parser.add_argument("--test_split", type = float, 
+                        help = "Ratio of test data. Default is 0.2", 
+                        default = 0.2)
+    
+    parser.add_argument("--tokenizer", type = str,
+                        help = "The tokenizer to use. 'scispacy', 'scispacy_plus', 'biobert-base', 'biobert-large', 'default'.", 
+                        default = "scispacy")
+    
+    parser.add_argument("--ext", type = str, 
+                        help = "Extension of target file. Default is txt.", 
+                        default = "txt")
+    
+    parser.add_argument("--sep", type = str, 
+                        help = "Token-label separator. Default is a space.", 
+                        default = " ")
+    
+    args = parser.parse_args()
+
     
     if args.target_dir[-1] != '/':
         args.target_dir += '/'
