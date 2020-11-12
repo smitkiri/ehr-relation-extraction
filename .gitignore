@@ -26,6 +26,9 @@ bilstm-crf_ner/results/
 ade_corpus/
 test_data/
 runs/
+results/
+bilstm_crf_ner/data/
+bilstm_crf_ner/results/
 
 # IntelliJ files
 /annotating-ehr.iml

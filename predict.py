@@ -8,18 +8,21 @@ from biobert_ner.utils_ner import (convert_examples_to_features,
                                    InputExample,
                                    get_labels)
 
-from bilstm-crf_ner.model.config import Config as BiLSTMConfig
-from bilstm-crf_ner.model.ner_model import NERModel as BiLSTMModel
-from bilstm-crf_ner.model.ner_learner import NERLearner as BiLSTMLearner
+from bilstm_crf_ner.model.config import Config as BiLSTMConfig
+from bilstm_crf_ner.model.ner_model import NERModel as BiLSTMModel
+from bilstm_crf_ner.model.ner_learner import NERLearner as BiLSTMLearner
 
 import numpy as np
 from torch import nn
 from ehr import HealthRecord
+from generate_data import scispacy_plus_tokenizer
 
 from typing import List, Tuple
 
 BIOBERT_SEQ_LEN = 128
+BILSTM_SEQ_LEN = 512
 
+#=====BioBERT Model======
 biobert_labels = get_labels('biobert_ner/dataset_two_ade/labels.txt')
 biobert_label_map = {i: label for i, label in enumerate(biobert_labels)}
 num_labels = len(biobert_labels)
@@ -42,13 +45,11 @@ biobert_training_args = TrainingArguments(output_dir = "output",
 
 biobert_trainer = Trainer(model = biobert_model, args = biobert_training_args)
 
-
-BILSTM_SEQ_LEN = 512
-
+#=====BiLSTM + CRF model=========
 bilstm_config = BiLSTMConfig()
 bilstm_model = BiLSTMModel(bilstm_config)
 bilstm_learn = BiLSTMLearner(bilstm_config, bilstm_model)
-bilstm_learn.load()
+bilstm_learn.load("ner_15e_bilstm_crf_elmo")
 
 def align_predictions(predictions: np.ndarray) -> List[List[str]]:
     """
@@ -69,7 +70,7 @@ def align_predictions(predictions: np.ndarray) -> List[List[str]]:
     batch_size, seq_len = preds.shape
     preds_list = [[] for _ in range(batch_size)]
 
-    for i in range(batch_size):
+    for i in range(1, batch_size):
         for j in range(seq_len):
             preds_list[i].append(biobert_label_map[preds[i][j]])
 
@@ -216,7 +217,10 @@ def get_ner_predictions(ehr_record: str, model_name: str = "biobert"):
         predictions = get_biobert_predictions(test_ehr)
     
     elif model_name.lower() == "bilstm":
-        pass
+        test_ehr = HealthRecord(text = ehr_record, 
+                                tokenizer = scispacy_plus_tokenizer, 
+                                is_training = False)
+        predictions = get_bilstm_predictions(test_ehr)
     
     else:
         raise AttributeError("Accepted model names include 'biobert' "

@@ -5,6 +5,7 @@ from .general_utils import get_logger
 from .data_utils import get_trimmed_glove_vectors, load_vocab, \
         get_processing_word
 
+WORKING_DIR = "bilstm_crf_ner/"
 
 class Config():
     def __init__(self, load=True):
@@ -55,7 +56,7 @@ class Config():
 
 
     # general config
-    dir_output = "results/test/"
+    dir_output = WORKING_DIR + "results/test/"
     dir_model  = dir_output
     path_log   = dir_output + "log.txt"
 
@@ -64,9 +65,9 @@ class Config():
     dim_char = 100
 
     # glove files
-    filename_glove = "data/glove.6B/glove.6B.{}d.txt".format(dim_word)
+    filename_glove = WORKING_DIR + "data/glove.6B/glove.6B.{}d.txt".format(dim_word)
     # trimmed embeddings (created from glove_filename with build_data.py)
-    filename_trimmed = "data/glove.6B.{}d.trimmed.npz".format(dim_word)
+    filename_trimmed = WORKING_DIR + "data/glove.6B.{}d.trimmed.npz".format(dim_word)
     use_pretrained = True
 
     # dataset
@@ -76,17 +77,17 @@ class Config():
 
     #filename_dev = filename_test = filename_train = "data/test.txt" # test
 
-    filename_dev = "data/devel.txt"
-    filename_test = "data/test.txt"
-    filename_train = "data/train.txt"
+    filename_dev = WORKING_DIR + "data/devel.txt"
+    filename_test = WORKING_DIR + "data/test.txt"
+    filename_train = WORKING_DIR + "data/train.txt"
 
     max_iter = None # if not None, max number of examples in Dataset
 
     # vocab (created from dataset with build_data.py)
-    filename_words = "data/words.txt"
-    filename_tags = "data/tags.txt"
-    filename_chars = "data/chars.txt"
-    filename_test_preds = "data/test_preds.txt"
+    filename_words = WORKING_DIR + "data/words.txt"
+    filename_tags = WORKING_DIR + "data/tags.txt"
+    filename_chars = WORKING_DIR + "data/chars.txt"
+    filename_test_preds = WORKING_DIR + "data/test_preds.txt"
 
     # training
     train_embeddings = False
