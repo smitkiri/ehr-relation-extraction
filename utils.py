@@ -9,7 +9,9 @@ from ehr import HealthRecord
 import random
 import json
 
-TPL_HTML = '<span style = "background-color: {color}; border-radius: 5px;">&nbsp;{content}&nbsp;</span>'
+TPL_HTML = """<span style = "background-color: {color}; border-radius: 5px;">&nbsp;{content}&nbsp;</span>"""
+
+TPL_HTML_HOVER = """<span class = "tooltip" style = "background-color: {color}; border-radius: 5px;">&nbsp;{content}&nbsp;<span class = "tooltiptext" style = "background: {color}">{ent_type}</span></span>"""
 
 COLORS = {"Drug": "#aa9cfc", "Strength": "#ff9561", 
           "Form": "#7aecec", "Frequency": "#9cc9cc", 
@@ -17,7 +19,7 @@ COLORS = {"Drug": "#aa9cfc", "Strength": "#ff9561",
           "Reason": "#e4e7d2", "ADE": "#ff8197", 
           "Duration": "#97c4f5"}
 
-def display_ehr(text, entities):    
+def display_ehr(text, entities, return_html = False):    
     '''
     Highlights EHR records with colors and displays
     them as HTML. Ideal for working with Jupyter Notebooks
@@ -28,6 +30,9 @@ def display_ehr(text, entities):
         EHR record to render
     entities : dictionary / list
          A list of Entity objects
+         
+    return_html : bool
+        Indicator for returning HTML or printing it.
 
     Returns
     -------
@@ -44,26 +49,40 @@ def display_ehr(text, entities):
     render_text = ""
     start_idx = 0
     
-    # Display legend
-    for ent, col in COLORS.items():
-        render_text += TPL_HTML.format(content = ent, color = col)
-        render_text += "&nbsp" * 5
-    
-    render_text += '\n'
-    render_text += '--' * 50
-    render_text += "\n\n"
+    if not return_html:
+        # Display legend
+        for ent, col in COLORS.items():
+            render_text += TPL_HTML.format(content = ent, color = col)
+            render_text += "&nbsp" * 5
+        
+        render_text += '\n'
+        render_text += '--' * 50
+        render_text += "\n\n"
     
     # Replace each character range with HTML span template
     for ent in entities:
         render_text += text[start_idx:ent.range[0]]
-        render_text += TPL_HTML.format(content = text[ent.range[0]:ent.range[1]], color = COLORS[ent.name])
+        
+        if return_html:
+            render_text += TPL_HTML_HOVER.format(
+                content = text[ent.range[0]:ent.range[1]], 
+                color = COLORS[ent.name], 
+                ent_type = ent.name)
+        else:
+            render_text += TPL_HTML.format(
+                content = text[ent.range[0]:ent.range[1]], 
+                color = COLORS[ent.name])
+        
         start_idx = ent.range[1]
     
     render_text += text[start_idx:]
     render_text = render_text.replace("\n", "<br>")
     
-    # Render HTML
-    display(HTML(render_text))
+    if return_html:
+        return render_text
+    else:
+        # Render HTML
+        display(HTML(render_text))
 
 
 def read_data(data_dir: str = 'data/',
