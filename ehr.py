@@ -17,7 +17,7 @@ class HealthRecord:
     '''
     Objects that represent a single electronic health record
     '''
-    def __init__(self, record_id: str, text_path: Optional[str], 
+    def __init__(self, record_id: str = "1", text_path: Optional[str] = None, 
                  ann_path: Optional[str] = None,
                  text: Optional[str] = None,
                  tokenizer: Callable[[str], List[str]] = None,
