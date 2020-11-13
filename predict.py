@@ -51,6 +51,10 @@ bilstm_model = BiLSTMModel(bilstm_config)
 bilstm_learn = BiLSTMLearner(bilstm_config, bilstm_model)
 bilstm_learn.load("ner_15e_bilstm_crf_elmo")
 
+import en_ner_bc5cdr_md
+scispacy_tok = en_ner_bc5cdr_md.load().tokenizer
+scispacy_plus_tokenizer.__defaults__ = (scispacy_tok,)
+
 def align_predictions(predictions: np.ndarray) -> List[List[str]]:
     """
     Get the list of labelled predictions from model output
@@ -212,7 +216,7 @@ def get_bilstm_predictions(test_ehr: HealthRecord) -> List[Tuple[str, int, int]]
 def get_ner_predictions(ehr_record: str, model_name: str = "biobert"):
     if model_name.lower() == "biobert":
         test_ehr = HealthRecord(text = ehr_record, 
-                                tokenizer = biobert_tokenizer, 
+                                tokenizer = biobert_tokenizer.tokenize, 
                                 is_training = False)
         predictions = get_biobert_predictions(test_ehr)
     
