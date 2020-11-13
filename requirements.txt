@@ -6,3 +6,5 @@ torchvision
 transformers==3.0.0
 numpy==1.19.2
 seqeval==1.2.2
+fastapi==0.61.2
+uvicorn==0.12.2
