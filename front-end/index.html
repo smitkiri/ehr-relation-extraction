@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<title>Tag EHR Records</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css">
+    <link href='https://fonts.googleapis.com/css?family=Catamaran' rel='stylesheet'>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.0/js/bootstrap.min.js"></script>
+    <script src="spin.js"></script>
+	<script src="ladda.js"></script>
+    <link rel="stylesheet" href="ladda-themeless.min.css">
+    <style>
+		#taggedEhr span {
+		  position: relative;
+		  border-bottom: 1px dotted black;
+		  color: black;
+		}
+
+		#taggedEhr span span {
+		  visibility: hidden;
+		  width: auto;
+		  color: black;
+		  border-bottom: 0;
+		  font-weight: bold;
+		  font-family: Catamaran;
+		  text-align: center;
+		  border-radius: 5px;
+		  padding: 5px 5px 5px 5px;
+
+		  /* Position the tooltip */
+		  position: absolute;
+		  z-index: 1;
+		  bottom: 125%;
+		  left: 0%;
+		}
+
+		#taggedEhr span:hover span {
+		  visibility: visible;
+		}
+
+		@media (min-width: 768px) {
+		    #sidebar {
+		        position: fixed;
+		        padding-top: 70px;
+		        bottom: 0;
+		        border-right: #cdcdcd medium solid;
+		    }
+		}
+
+		body { 
+			padding-top: 70px; 
+		}
+
+
+    </style>
+</head>
+
+<body>
+	<nav class="navbar navbar-light bg-light justify-content-center fixed-top">
+	  <a class="navbar-brand" href="#">
+	    Tag EHR Records
+	  </a>
+	</nav>
+	<main class="container-fluid" role="main">
+		<div class="row">
+			<div class="col-sm-6" id="sidebar" style="padding-left: 50px;">
+				<form method="POST">
+
+				  <div class="form-group row">
+				    <label for="inputNerModel" class="col-sm-3 col-form-label">NER Model</label>
+				    <div class="col-sm-6">
+				      	<select class="form-control" id="ner-model">
+            				<option value="biobert">BioBERT</option>
+            				<option value="bilstm">BiLSTM + CRF</option>
+            			</select>
+            		</div>
+				  </div>
+
+				  <div class="form-group row">
+				  	<label for="ehrFile" class="col-sm-3 col-form-label">Upload EHR</label>
+				  	<div class="col-sm-6">
+						<input type="file" class="form-control-file" id="ehrFile">
+					</div>
+				  </div>
+
+				  <div class="form-group row" style="font-weight: bold;">
+				  	<label class="col-sm-3 col-form-label">OR</label>
+				  </div>
+
+				  <div class="form-group row">
+				  	<label for="ehrText" class="col-sm-5 col-form-label">Paste it here</label>
+				  </div>
+				  <textarea class="form-control col-sm-11" rows="10" id="ehrText" name="ehrText"></textarea>
+				  <br>
+				  
+				  <div class="form-group row">
+				    <div class="col-sm-10">
+				      <button type="button" class="btn btn-primary ladda-button" id="subBtn"
+            				  data-style="expand-right">Submit</button>
+				    </div>
+				  </div>
+
+				</form>
+				<p class="d-none" id="errorText"></p>
+			</div>
+
+			<div class="col-sm-6 offset-sm-6" style="padding-left: 50px;"> 
+				<h3 class="text-center d-none" id="nerTitle">
+					Tagged EHR
+				</h3>
+				<br>
+				<div id="taggedEhr" class="d-none">
+				</div>
+			</div>
+
+		</div>
+	</main>
+
+
+</body>
+
+<script>
+
+	$(document).ready(function() {
+
+		// Read file contents and set to text area
+		$('#ehrFile').change( function(){
+		    var fileReader = new FileReader();
+		    fileReader.onload = function () {
+		      var data = fileReader.result;
+		      $("#ehrText").val(data);
+		    };
+		    fileReader.readAsText($(this).prop('files')[0]);
+
+		});
+
+		// Print NER results on submit button click
+		$("#subBtn").on("click", function (e) {
+	        var laddaBtn = e.currentTarget;
+	        var l = Ladda.create(laddaBtn);
+	        l.start();
+
+	        var settings = {
+	            "url": "http://127.0.0.1:8000/ner/",
+	            "method": "POST",
+	            "headers": {
+	                "Content-Type": "application/json"
+	            },
+	            "data": JSON.stringify({
+	                "ehr_text": $("#ehrText").val(),
+	                "model_choice": $("#ner-model option:selected").val()
+	            }),
+	        };
+
+	        //POST request to API
+	        $.ajax(settings).done(function (response) {
+
+	            let textHtml = response.tagged_text;
+	            
+	            if (textHtml == '' || !textHtml) {
+	                let str = `<span class="text-danger">We're sorry some error occurred while trying to get the answer.</span></br>`
+	                $("#errorText").html(str);
+	                $("#errorText").removeClass("d-none");
+	            } else {
+	            	$("#nerTitle").removeClass("d-none")
+	            	$("#taggedEhr").removeClass("d-none")
+	            	$("#taggedEhr").html(textHtml);
+	            }
+
+	            l.stop();
+	        });
+	    });
+	})
+</script>
+
+</html>
