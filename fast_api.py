@@ -4,6 +4,7 @@
 
 from fastapi import FastAPI
 from pydantic import BaseModel
+from fastapi.middleware.cors import CORSMiddleware
 
 from predict import get_ner_predictions
 from utils import display_ehr
@@ -15,7 +16,13 @@ class NERTask(BaseModel):
 
 
 app = FastAPI()
-
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.post("/ner/")
 def create_ehr(ner_input: NERTask):
@@ -23,11 +30,11 @@ def create_ehr(ner_input: NERTask):
 
     predictions = get_ner_predictions(
         ehr_record=ner_input.ehr_text,
-        model_name=ner_input.model_choice
-    )
-
-    return display_ehr(
+        model_name=ner_input.model_choice)
+    
+    html_ehr = display_ehr(
         text=ner_input.ehr_text,
         entities=predictions,
-        return_html=True
-    )
+        return_html=True)
+
+    return {'tagged_text': html_ehr}

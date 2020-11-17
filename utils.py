@@ -11,7 +11,7 @@ import json
 
 TPL_HTML = """<span style = "background-color: {color}; border-radius: 5px;">&nbsp;{content}&nbsp;</span>"""
 
-TPL_HTML_HOVER = """<span class = "tooltip" style = "background-color: {color}; border-radius: 5px;">&nbsp;{content}&nbsp;<span class = "tooltiptext" style = "background: {color}">{ent_type}</span></span>"""
+TPL_HTML_HOVER = """<span style = "background-color: {color}; border-radius: 5px;">&nbsp;{content}&nbsp;<span style = "background: {color}">{ent_type}</span></span>"""
 
 COLORS = {"Drug": "#aa9cfc", "Strength": "#ff9561", 
           "Form": "#7aecec", "Frequency": "#9cc9cc", 
