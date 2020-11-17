@@ -16,6 +16,7 @@ import numpy as np
 from torch import nn
 from ehr import HealthRecord
 from generate_data import scispacy_plus_tokenizer
+from annotations import Entity
 
 from typing import List, Tuple
 
@@ -44,6 +45,12 @@ biobert_training_args = TrainingArguments(output_dir = "output",
                                   do_predict = True)
 
 biobert_trainer = Trainer(model = biobert_model, args = biobert_training_args)
+
+label_ent_map = {'DRUG': 'Drug', 'STR': 'Strength',
+                 'DUR': 'Duration', 'ROU': 'Route',
+                 'FOR': 'Form', 'ADE': 'ADE',
+                 'DOS': 'Dosage', 'REA': 'Reason', 
+                 'FRE': 'Frequency'}
 
 #=====BiLSTM + CRF model=========
 bilstm_config = BiLSTMConfig()
@@ -74,7 +81,7 @@ def align_predictions(predictions: np.ndarray) -> List[List[str]]:
     batch_size, seq_len = preds.shape
     preds_list = [[] for _ in range(batch_size)]
 
-    for i in range(1, batch_size):
+    for i in range(1, batch_size - 1):
         for j in range(seq_len):
             preds_list[i].append(biobert_label_map[preds[i][j]])
 
@@ -156,7 +163,7 @@ def get_biobert_predictions(test_ehr: HealthRecord) -> List[Tuple[str, int, int]
         ("entity", start_idx, end_idx).
 
     """
-    split_points = test_ehr.get_split_points(max_len = BIOBERT_SEQ_LEN)
+    split_points = test_ehr.get_split_points(max_len = BIOBERT_SEQ_LEN - 2)
     examples = []
     
     for idx in range(len(split_points) - 1):
@@ -182,6 +189,7 @@ def get_biobert_predictions(test_ehr: HealthRecord) -> List[Tuple[str, int, int]
     
     predictions, _, _ = biobert_trainer.predict(input_features)
     predictions = align_predictions(predictions)
+    
     pred_entities = []
     for idx in range(len(split_points) - 1):
         chunk_pred = get_chunks(predictions[idx])
@@ -207,8 +215,8 @@ def get_bilstm_predictions(test_ehr: HealthRecord) -> List[Tuple[str, int, int]]
         chunk_pred = get_chunks(predictions[idx])
         for ent in chunk_pred:
             pred_entities.append((ent[0],
-                                  test_ehr.get_char_idx(split_points[idx] + ent[1] - 1)[0],
-                                  test_ehr.get_char_idx(split_points[idx] + ent[2] - 1)[1]))
+                                  test_ehr.get_char_idx(split_points[idx] + ent[1])[0],
+                                  test_ehr.get_char_idx(split_points[idx] + ent[2])[1]))
 
     return pred_entities
 
@@ -218,6 +226,7 @@ def get_ner_predictions(ehr_record: str, model_name: str = "biobert"):
         test_ehr = HealthRecord(text = ehr_record, 
                                 tokenizer = biobert_tokenizer.tokenize, 
                                 is_training = False)
+        
         predictions = get_biobert_predictions(test_ehr)
     
     elif model_name.lower() == "bilstm":
@@ -229,5 +238,11 @@ def get_ner_predictions(ehr_record: str, model_name: str = "biobert"):
     else:
         raise AttributeError("Accepted model names include 'biobert' "
                              "and 'bilstm'.")
+        
+    ent_preds = []
+    for i, pred in enumerate(predictions):
+        ent = Entity("T%d" % i, label_ent_map[pred[0]], [pred[1], pred[2]])
+        ent.set_text(test_ehr.text[ent[0]:ent[1]])
+        ent_preds.append(ent)
     
-    return predictions
+    return ent_preds

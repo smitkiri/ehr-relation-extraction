@@ -14,7 +14,8 @@ class Entity(Annotation):
     Objects that represent named entities
     '''
     def __init__(self, entity_id: str, 
-                 entity_type: str = None) -> None:
+                 entity_type: str = None, 
+                 char_range: List[int] = []) -> None:
         '''
         Initializes Entity object.
 
@@ -28,7 +29,7 @@ class Entity(Annotation):
         '''
         
         super().__init__(entity_id, entity_type)
-        self.range: List[int] = []
+        self.range: List[int] = char_range
         self.ann_text: str = ""
         
     def set_range(self, new_range: List[int]) -> None:
@@ -58,8 +59,11 @@ class Entity(Annotation):
         string += "Entity name: " + self.name + "\n"
         
         string += "Character range: "
-        string += str(self.range[0]) + " " + str(self.range[1]) + "\n"     
-        string += "Entity text: " + self.ann_text    
+        string += str(self.range[0]) + " " + str(self.range[1]) + "\n"
+        
+        if self.ann_text:
+            string += "Entity text: '" + self.ann_text + "'"
+        
         return string
     
     def __str__(self) -> str:
