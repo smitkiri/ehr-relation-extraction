@@ -15,6 +15,8 @@
 # limitations under the License.
 """ Named entity recognition fine-tuning: utilities to work with CoNLL-2003 task. """
 
+import sys
+sys.path.append("../")
 
 import logging
 import os
@@ -22,7 +24,7 @@ import pdb
 from dataclasses import dataclass
 from enum import Enum
 from typing import List, Optional, Union, Dict
-from ..ehr import HealthRecord
+from ehr import HealthRecord
 
 from filelock import FileLock
 
