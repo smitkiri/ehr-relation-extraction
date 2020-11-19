@@ -21,7 +21,8 @@ import os
 import pdb
 from dataclasses import dataclass
 from enum import Enum
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Dict
+from ..ehr import HealthRecord
 
 from filelock import FileLock
 
@@ -394,4 +395,75 @@ def get_labels(path: str) -> List[str]:
         return labels
     else:
         return ["O", "B-MISC", "I-MISC", "B-PER", "I-PER", "B-ORG", "I-ORG", "B-LOC", "I-LOC"]
+
+
+def generate_input_files(ehr_records: List[HealthRecord], filename: str,
+                         ade_records: List[Dict] = None, max_len:int = 510, 
+                         sep: str = ' '):
+    '''
+    Write EHR and ADE records to a file.
+
+    Parameters
+    ----------
+    ehr_records : List[HealthRecord]
+        List of EHR records.
+
+    ade_records : List[Dict]
+        List of ADE records.
+
+    filename : str
+        File name to write to.
+    
+    max_len : int, optional
+        Max length of an example. The default is 510.
+        
+    sep : str, optional
+        Token-label separator. The default is a space.
+
+    '''
+    with open(filename, 'w') as f:
+      for record in ehr_records:
+
+        split_idx = record.get_split_points(max_len = max_len)
+        labels = record.get_labels()
+        tokens = record.get_tokens()
+  
+        start = split_idx[0]
+        end = split_idx[1]
+  
+        for i in range(1, len(split_idx)):
+          for (token, label) in zip(tokens[start:end+1], labels[start:end+1]):
+            f.write('{}{}{}\n'.format(token, sep, label))      
+  
+          start = end + 1
+          if i != len(split_idx)-1:
+            end = split_idx[i+1]
+            f.write('\n')
+        f.write('\n')
+
+      if ade_records is not None:
+        
+        for ade in ade_records:
+          ade_tokens = ade['tokens']
+          ade_entities = ade['entities']
+
+          ent_label_map = {'Drug': 'DRUG', 'Adverse-Effect': 'ADE'}
+          ade_labels = ['O'] * len(ade_tokens)
+
+          for ent in ade_entities.values():
+            ent_type = ent.name
+            start_idx = ent.range[0]
+            end_idx = ent.range[1]
+            
+            for idx in range(start_idx, end_idx+1):
+                if idx == start_idx:
+                    ade_labels[idx] = 'B-' + ent_label_map[ent_type]
+                else:
+                    ade_labels[idx] = 'I-' + ent_label_map[ent_type]
+
+          for (token, label) in zip(ade_tokens, ade_labels):
+            f.write('{}{}{}\n'.format(token, sep, label)) 
+          f.write('\n')
+
+    print("Data successfully saved in " + filename)
 
