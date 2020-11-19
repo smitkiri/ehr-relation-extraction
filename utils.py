@@ -1,4 +1,4 @@
-from typing import List, Tuple, Callable, Dict
+from typing import List, Tuple, Callable, Dict, Union
 from annotations import Entity, Relation
 
 import os
@@ -8,6 +8,7 @@ from IPython.core.display import display, HTML
 from ehr import HealthRecord
 import random
 import json
+from collections import defaultdict
 
 TPL_HTML = """<span style = "background-color: {color}; border-radius: 5px;">&nbsp;{content}&nbsp;</span>"""
 
@@ -19,7 +20,9 @@ COLORS = {"Drug": "#aa9cfc", "Strength": "#ff9561",
           "Reason": "#e4e7d2", "ADE": "#ff8197", 
           "Duration": "#97c4f5"}
 
-def display_ehr(text, entities, return_html = False):    
+def display_ehr(text: str, 
+                entities: Union[Dict[str, Entity], List[Entity]], 
+                return_html: bool = False) -> Union[None, str]:    
     '''
     Highlights EHR records with colors and displays
     them as HTML. Ideal for working with Jupyter Notebooks
@@ -28,7 +31,8 @@ def display_ehr(text, entities, return_html = False):
     ----------
     text : str
         EHR record to render
-    entities : dictionary / list
+    
+    entities : Union[Dict[str, Entity], List[Entity]]
          A list of Entity objects
          
     return_html : bool
@@ -36,7 +40,9 @@ def display_ehr(text, entities, return_html = False):
 
     Returns
     -------
-    None.
+    Union[None, str]
+        If return_html is true, returns html strings
+        otherwise displays HTML.
 
     '''
     if isinstance(entities, dict):
@@ -208,131 +214,142 @@ def read_ade_data(ade_data_dir: str = 'ade_data/',
     return (ade_train_data, ade_test_data)
 
 
-def process_ade_files(ade_data):
-  ade_records = []
-
-  for ade in ade_data:
-    entities = {}
-    relations = {}
-    relation_backlog = []
-
-    # Tokens
-    tokens = ade['tokens']
-
-    # Entities
-    E_num = 1
-    for ent in ade['entities']:
-      ent_id = 'T'+"%s"%E_num
-      ent_obj = Entity(entity_id=ent_id, 
-                      entity_type=ent['type'])
-
-      r = [ent['start'], ent['end']-1]
-      r = list(map(int, r))
-      ent_obj.set_range(r)
-
-      text = ''
-      for token_ent in ade['tokens'][ent['start']:ent['end']]:
-        text += token_ent + ' '
-      ent_obj.set_text(text)
-
-      entities[ent_id] = ent_obj
-      E_num+=1 
-
-    # Relations
-    R_num = 1
-    for relation in ade['relations']:
-      rel_id = 'R'+"%s"%R_num
-      rel_details = 'ADE-Drug'
-      entity1 = "T"+str(relation['head']+1)
-      entity2 = "T"+str(relation['tail']+1)
-
-      if entity1 in entities and entity2 in entities:
-        rel = Relation(relation_id = rel_id, 
-                      relation_type = rel_details, 
-                      arg1 = entities[entity1], 
-                      arg2 = entities[entity2])
-
-        relations[rel_id] = rel
-
-      else:
-        relation_backlog.append([rel_id, rel_details, 
-                                entity1, entity2])
-      R_num+=1
-
-    ade_records.append({"tokens":tokens, "entities": entities, "relations": relations})
-  return ade_records
-
-
-def generate_input_files(ehr_records: List[HealthRecord], filename: str,
-                         ade_records: List[Dict] = None, max_len:int = 510, 
-                         sep: str = ' '):
+def process_ade_files(ade_data: dict) -> dict:
     '''
-    Write EHR and ADE records to a file.
+    Extracts tokens and creates Entity and Relation objects
+    from raw json data.
 
     Parameters
     ----------
-    ehr_records : List[HealthRecord]
-        List of EHR records.
+    ade_data : dict
+        Raw json data.
 
-    ade_records : List[Dict]
-        List of ADE records.
-
-    filename : str
-        File name to write to.
-    
-    max_len : int, optional
-        Max length of an example. The default is 510.
-        
-    sep : str, optional
-        Token-label separator. The default is a space.
+    Returns
+    -------
+    dict
+        Tokens, entities and relations.
 
     '''
-    with open(filename, 'w') as f:
-      for record in ehr_records:
+    ade_records = []
+    
+    for ade in ade_data:
+      entities = {}
+      relations = {}
+      relation_backlog = []
+    
+      # Tokens
+      tokens = ade['tokens']
+    
+      # Entities
+      E_num = 1
+      for ent in ade['entities']:
+        ent_id = 'T'+"%s"%E_num
+        ent_obj = Entity(entity_id=ent_id, 
+                        entity_type=ent['type'])
+    
+        r = [ent['start'], ent['end']-1]
+        r = list(map(int, r))
+        ent_obj.set_range(r)
+    
+        text = ''
+        for token_ent in ade['tokens'][ent['start']:ent['end']]:
+          text += token_ent + ' '
+        ent_obj.set_text(text)
+    
+        entities[ent_id] = ent_obj
+        E_num+=1 
+    
+      # Relations
+      R_num = 1
+      for relation in ade['relations']:
+        rel_id = 'R'+"%s"%R_num
+        rel_details = 'ADE-Drug'
+        entity1 = "T"+str(relation['head']+1)
+        entity2 = "T"+str(relation['tail']+1)
+    
+        if entity1 in entities and entity2 in entities:
+          rel = Relation(relation_id = rel_id, 
+                        relation_type = rel_details, 
+                        arg1 = entities[entity1], 
+                        arg2 = entities[entity2])
+    
+          relations[rel_id] = rel
+    
+        else:
+          relation_backlog.append([rel_id, rel_details, 
+                                  entity1, entity2])
+        R_num+=1
+    
+      ade_records.append({"tokens":tokens, "entities": entities, "relations": relations})
+    return ade_records
 
-        split_idx = record.get_split_points(max_len = max_len)
-        labels = record.get_labels()
-        tokens = record.get_tokens()
-  
-        start = split_idx[0]
-        end = split_idx[1]
-  
-        for i in range(1, len(split_idx)):
-          for (token, label) in zip(tokens[start:end+1], labels[start:end+1]):
-            f.write('{}{}{}\n'.format(token, sep, label))      
-  
-          start = end + 1
-          if i != len(split_idx)-1:
-            end = split_idx[i+1]
-            f.write('\n')
-        f.write('\n')
 
-      if ade_records is not None:
-        
-        for ade in ade_records:
-          ade_tokens = ade['tokens']
-          ade_entities = ade['entities']
+def map_entities(entities: List[Entity], 
+                 actual_relations: List[Relation] = None) \
+    -> Union[List[Relation], List[Tuple[Relation, int]]]: 
+    '''
+    Maps each drug entity to all other non-drug entities in the list.
 
-          ent_label_map = {'Drug': 'DRUG', 'Adverse-Effect': 'ADE'}
-          ade_labels = ['O'] * len(ade_tokens)
+    Parameters
+    ----------
+    entities : List[Entity]
+        List of entities.
+    
+    actual_relations : List[Relation], optional
+        List of actual relations (for training data). 
+        The default is None.
 
-          for ent in ade_entities.values():
-            ent_type = ent.name
-            start_idx = ent.range[0]
-            end_idx = ent.range[1]
+    Returns
+    -------
+    Union[List[Relations], List[Tuple[Relation, int]]]
+        List of mapped relations. If actual relations are specified,
+        also returns a flag to indicate if it is an actual relation.
+
+    '''
+    drug_entities = []
+    non_drug_entities = []
+    
+    # Splitting each entity to drug and non-drug entities
+    for ent in entities:
+        if ent.name.lower() == "drug":
+            drug_entities.append(ent)
+        else:
+            non_drug_entities.append(ent)
             
-            for idx in range(start_idx, end_idx+1):
-                if idx == start_idx:
-                    ade_labels[idx] = 'B-' + ent_label_map[ent_type]
-                else:
-                    ade_labels[idx] = 'I-' + ent_label_map[ent_type]
+    relations = []
+    i = 1
+    
+    # Mapping each drug entity to each non-drug entity
+    for ent1 in drug_entities:
+        for ent2 in non_drug_entities:
+            rel = Relation(relation_id = "R%d" % i, 
+                           relation_type = "Drug-" + ent2.name, 
+                           arg1 = ent1, arg2 = ent2)
+            relations.append(rel)
+            i += 1
+            
+    if actual_relations is None:
+        return relations
+    
+    # Maps each relation type to list of actual relations
+    actual_rel_dict = defaultdict(list)
+    for rel in actual_relations:
+        actual_rel_dict[rel.name].append(rel)
+    
+    relation_flags = []
+    flag = 0
+    
+    # Computes actual relation flags
+    for rel in relations:
+        for act_rel in actual_rel_dict[rel.name]:
+            if rel == act_rel:
+                flag = 1
+                break
 
-          for (token, label) in zip(ade_tokens, ade_labels):
-            f.write('{}{}{}\n'.format(token, sep, label)) 
-          f.write('\n')
-
-    print("Data successfully saved in " + filename)
-
+        relation_flags.append(flag)
+        flag = 0
+        
+    return list(zip(relations, relation_flags))
 
 def drawProgressBar(current, total, string = '', barLen = 20):
     '''
