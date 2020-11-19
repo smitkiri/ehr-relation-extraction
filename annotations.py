@@ -81,7 +81,15 @@ class Entity(Annotation):
         '''
         yield self.range[0]
         yield self.range[1]
-
+        
+    def __eq__(self, other) -> bool:
+        """
+        Overrides equality method
+        """
+        if self.name == other.name and self.range == other.range:
+            return True
+        else:
+            return False
 
 class Relation(Annotation):
     '''
@@ -129,3 +137,16 @@ class Relation(Annotation):
     
     def __str__(self) -> str:
         return self.__repr__()
+    
+    def __eq__(self, other) -> bool:
+        """
+        Overrides the default equality method.
+        """
+        if self.arg1 == other.arg1 and self.arg2 == other.arg2:
+            return True
+        
+        elif self.arg2 == other.arg1 and self.arg1 == other.arg2:
+            return True
+        
+        else:
+            return False
