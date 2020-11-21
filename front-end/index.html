@@ -55,6 +55,15 @@
 			padding-top: 70px; 
 		}
 
+		.vertical-center {
+		  min-height: 100%;  /* Fallback for browsers do NOT support vh unit */
+		  min-height: 80vh; /* These two lines are counted as one :-)       */
+
+		  display: flex;
+		  align-items: center;
+		  text-align: center;
+		}
+
 
     </style>
 </head>
@@ -108,13 +117,20 @@
 				<p class="d-none" id="errorText"></p>
 			</div>
 
-			<div class="col-sm-6 offset-sm-6" style="padding-left: 50px;"> 
+			<div class="col-sm-6 offset-sm-6" style="padding-left: 50px;" id="right-col"> 
 				<h3 class="text-center d-none" id="nerTitle">
 					Tagged EHR
 				</h3>
+				
 				<br>
+				
 				<div id="taggedEhr" class="d-none">
 				</div>
+
+				<div id = "waiting-text" class="vertical-center offset-sm-3">
+					Waiting for an EHR record!
+				</div>
+
 			</div>
 
 		</div>
@@ -169,6 +185,7 @@
 	            	$("#nerTitle").removeClass("d-none")
 	            	$("#taggedEhr").removeClass("d-none")
 	            	$("#taggedEhr").html(textHtml);
+	            	$('#waiting-text').addClass("d-none");
 	            }
 
 	            l.stop();
