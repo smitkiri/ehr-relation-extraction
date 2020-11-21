@@ -1,7 +1,7 @@
 from transformers import (AutoModelForTokenClassification,
                           TrainingArguments,
                           AutoTokenizer,
-                          AutoConfig, 
+                          AutoConfig,
                           Trainer)
 
 from biobert_ner.utils_ner import (convert_examples_to_features,
@@ -11,6 +11,7 @@ from biobert_ner.utils_ner import (convert_examples_to_features,
 from bilstm_crf_ner.model.config import Config as BiLSTMConfig
 from bilstm_crf_ner.model.ner_model import NERModel as BiLSTMModel
 from bilstm_crf_ner.model.ner_learner import NERLearner as BiLSTMLearner
+import en_ner_bc5cdr_md
 
 import numpy as np
 from torch import nn
@@ -23,7 +24,7 @@ from typing import List, Tuple
 BIOBERT_SEQ_LEN = 128
 BILSTM_SEQ_LEN = 512
 
-#=====BioBERT Model======
+# =====BioBERT Model======
 biobert_labels = get_labels('biobert_ner/dataset_two_ade/labels.txt')
 biobert_label_map = {i: label for i, label in enumerate(biobert_labels)}
 num_labels = len(biobert_labels)
@@ -39,28 +40,28 @@ biobert_tokenizer = AutoTokenizer.from_pretrained(
 
 biobert_model = AutoModelForTokenClassification.from_pretrained(
     "biobert_ner/output_two_ade/pytorch_model.bin",
-    config = biobert_config)
+    config=biobert_config)
 
-biobert_training_args = TrainingArguments(output_dir = "output", 
-                                  do_predict = True)
+biobert_training_args = TrainingArguments(output_dir="output",
+                                          do_predict=True)
 
-biobert_trainer = Trainer(model = biobert_model, args = biobert_training_args)
+biobert_trainer = Trainer(model=biobert_model, args=biobert_training_args)
 
 label_ent_map = {'DRUG': 'Drug', 'STR': 'Strength',
                  'DUR': 'Duration', 'ROU': 'Route',
                  'FOR': 'Form', 'ADE': 'ADE',
-                 'DOS': 'Dosage', 'REA': 'Reason', 
+                 'DOS': 'Dosage', 'REA': 'Reason',
                  'FRE': 'Frequency'}
 
-#=====BiLSTM + CRF model=========
+# =====BiLSTM + CRF model=========
 bilstm_config = BiLSTMConfig()
 bilstm_model = BiLSTMModel(bilstm_config)
 bilstm_learn = BiLSTMLearner(bilstm_config, bilstm_model)
 bilstm_learn.load("ner_15e_bilstm_crf_elmo")
 
-import en_ner_bc5cdr_md
 scispacy_tok = en_ner_bc5cdr_md.load().tokenizer
 scispacy_plus_tokenizer.__defaults__ = (scispacy_tok,)
+
 
 def align_predictions(predictions: np.ndarray) -> List[List[str]]:
     """
@@ -87,6 +88,7 @@ def align_predictions(predictions: np.ndarray) -> List[List[str]]:
 
     return preds_list
 
+
 def get_chunk_type(tok: str) -> Tuple[str, str]:
     """
     Args:
@@ -98,7 +100,7 @@ def get_chunk_type(tok: str) -> Tuple[str, str]:
     """
     tag_class = tok.split('-')[0]
     tag_type = tok.split('-')[-1]
-    
+
     return tag_class, tag_type
 
 
@@ -147,6 +149,8 @@ def get_chunks(seq: List[str]) -> List[Tuple[str, int, int]]:
 
     return chunks
 
+
+# noinspection PyTypeChecker
 def get_biobert_predictions(test_ehr: HealthRecord) -> List[Tuple[str, int, int]]:
     """
     Get predictions for a single EHR record using BioBERT
@@ -159,49 +163,50 @@ def get_biobert_predictions(test_ehr: HealthRecord) -> List[Tuple[str, int, int]
     Returns
     -------
     pred_entities : List[Tuple[str, int, int]]
-        List of predicted intities each with the format 
+        List of predicted Entities each with the format
         ("entity", start_idx, end_idx).
 
     """
-    split_points = test_ehr.get_split_points(max_len = BIOBERT_SEQ_LEN - 2)
+    split_points = test_ehr.get_split_points(max_len=BIOBERT_SEQ_LEN - 2)
     examples = []
-    
+
     for idx in range(len(split_points) - 1):
         words = test_ehr.tokens[split_points[idx]:split_points[idx + 1]]
-        examples.append(InputExample(guid = str(split_points[idx]), 
-                                     words = words, 
-                                     labels = ["O"] * len(words)))
-    
+        examples.append(InputExample(guid=str(split_points[idx]),
+                                     words=words,
+                                     labels=["O"] * len(words)))
+
     input_features = convert_examples_to_features(
-        examples, 
-        biobert_labels, 
-        max_seq_length = BIOBERT_SEQ_LEN, 
-        tokenizer = biobert_tokenizer, 
-        cls_token_at_end = False, 
-        cls_token = biobert_tokenizer.cls_token,
-        cls_token_segment_id = 0, 
-        sep_token = biobert_tokenizer.sep_token, 
-        sep_token_extra = False, 
-        pad_on_left = bool(biobert_tokenizer.padding_side == "left"),
-        pad_token = biobert_tokenizer.pad_token_id,
-        pad_token_segment_id = biobert_tokenizer.pad_token_type_id,
-        pad_token_label_id = nn.CrossEntropyLoss().ignore_index)
-    
+        examples,
+        biobert_labels,
+        max_seq_length=BIOBERT_SEQ_LEN,
+        tokenizer=biobert_tokenizer,
+        cls_token_at_end=False,
+        cls_token=biobert_tokenizer.cls_token,
+        cls_token_segment_id=0,
+        sep_token=biobert_tokenizer.sep_token,
+        sep_token_extra=False,
+        pad_on_left=bool(biobert_tokenizer.padding_side == "left"),
+        pad_token=biobert_tokenizer.pad_token_id,
+        pad_token_segment_id=biobert_tokenizer.pad_token_type_id,
+        pad_token_label_id=nn.CrossEntropyLoss().ignore_index)
+
     predictions, _, _ = biobert_trainer.predict(input_features)
     predictions = align_predictions(predictions)
-    
+
     pred_entities = []
     for idx in range(len(split_points) - 1):
         chunk_pred = get_chunks(predictions[idx])
         for ent in chunk_pred:
-            pred_entities.append((ent[0], 
-                                  test_ehr.get_char_idx(split_points[idx] + ent[1] - 1)[0], 
+            pred_entities.append((ent[0],
+                                  test_ehr.get_char_idx(split_points[idx] + ent[1] - 1)[0],
                                   test_ehr.get_char_idx(split_points[idx] + ent[2] - 1)[1]))
-    
+
     return pred_entities
 
+
 def get_bilstm_predictions(test_ehr: HealthRecord) -> List[Tuple[str, int, int]]:
-    split_points = test_ehr.get_split_points(max_len = BILSTM_SEQ_LEN)
+    split_points = test_ehr.get_split_points(max_len=BILSTM_SEQ_LEN)
     examples = []
 
     for idx in range(len(split_points) - 1):
@@ -221,28 +226,29 @@ def get_bilstm_predictions(test_ehr: HealthRecord) -> List[Tuple[str, int, int]]
     return pred_entities
 
 
+# noinspection PyTypeChecker
 def get_ner_predictions(ehr_record: str, model_name: str = "biobert"):
     if model_name.lower() == "biobert":
-        test_ehr = HealthRecord(text = ehr_record, 
-                                tokenizer = biobert_tokenizer.tokenize, 
-                                is_training = False)
-        
+        test_ehr = HealthRecord(text=ehr_record,
+                                tokenizer=biobert_tokenizer.tokenize,
+                                is_training=False)
+
         predictions = get_biobert_predictions(test_ehr)
-    
+
     elif model_name.lower() == "bilstm":
-        test_ehr = HealthRecord(text = ehr_record, 
-                                tokenizer = scispacy_plus_tokenizer, 
-                                is_training = False)
+        test_ehr = HealthRecord(text=ehr_record,
+                                tokenizer=scispacy_plus_tokenizer,
+                                is_training=False)
         predictions = get_bilstm_predictions(test_ehr)
-    
+
     else:
         raise AttributeError("Accepted model names include 'biobert' "
                              "and 'bilstm'.")
-        
+
     ent_preds = []
     for i, pred in enumerate(predictions):
         ent = Entity("T%d" % i, label_ent_map[pred[0]], [pred[1], pred[2]])
         ent.set_text(test_ehr.text[ent[0]:ent[1]])
         ent_preds.append(ent)
-    
+
     return ent_preds
