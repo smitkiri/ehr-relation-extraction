@@ -1,6 +1,7 @@
 import argparse
 from utils import read_data, save_pickle, read_ade_data
 from biobert_ner.utils_ner import generate_input_files
+from biobert_re.utils_re import generate_re_input_files
 from typing import List, Iterator
 import warnings
 import os
@@ -40,6 +41,10 @@ def scispacy_plus_tokenizer(sequence: str, scispacy_tok=None) -> Iterator[str]:
 
 def main():
     parser = argparse.ArgumentParser()
+    parser.add_argument("--task", type=str,
+                        help="Task to be completed. 'NER', 'RE'. Default is 'NER'.",
+                        default="NER")
+
     parser.add_argument("--input_dir", type=str,
                         help="Directory with txt and ann files. Default is 'data/'.",
                         default="data/")
@@ -83,6 +88,12 @@ def main():
 
     if not os.path.isdir(args.target_dir):
         os.mkdir(args.target_dir)
+
+    if args.task == 'RE':
+        args.dev_split = 0
+        args.sep = '\t'
+        args.ext = 'tsv'
+        args.max_seq_len = 128
 
     if args.tokenizer == "default":
         tokenizer = default_tokenizer
@@ -142,6 +153,7 @@ def main():
         ade_devel = None
 
     print('\n')
+
     # Data is already shuffled, just split for dev set
     dev_split_idx = int((1 - args.dev_split) * len(train_dev))
     train = train_dev[:dev_split_idx]
@@ -150,26 +162,45 @@ def main():
     files = {'train': (train, ade_train), 'train_dev': (train_dev, ade_train_dev),
              'devel': (devel, ade_devel), 'test': (test, ade_test)}
 
-    # Generate train, dev, test files
-    for filename, data in files.items():
-        generate_input_files(ehr_records=data[0], ade_records=data[1],
-                             filename=args.target_dir + filename + '.' + args.ext,
-                             max_len=args.max_seq_len, sep=args.sep)
-        save_pickle(args.target_dir + filename, {"EHR": data[0], "ADE": data[1]})
+    # Data for NER
+    if args.task.lower() == 'ner':
+        # Generate train, dev, test files
+        for filename, data in files.items():
+            generate_input_files(ehr_records=data[0], ade_records=data[1],
+                                 filename=args.target_dir + filename + '.' + args.ext,
+                                 max_len=args.max_seq_len, sep=args.sep)
+            save_pickle(args.target_dir + filename, {"EHR": data[0], "ADE": data[1]})
 
-    # Generate labels file
-    with open(args.target_dir + 'labels.txt', 'w') as file:
-        output_labels = map(lambda x: x + '\n', labels)
-        file.writelines(output_labels)
+        # Generate labels file
+        with open(args.target_dir + 'labels.txt', 'w') as file:
+            output_labels = map(lambda x: x + '\n', labels)
+            file.writelines(output_labels)
 
-    filenames = [name for files in map(
-        lambda x: [x + '.' + args.ext, x + '.pkl'],
-        list(files.keys()))
-                 for name in files]
+        filenames = [name for files in map(
+                lambda x: [x + '.' + args.ext, x + '.pkl'],
+                list(files.keys()))
+            for name in files]
+
+        print("\nGenerating files successful. Files generated: ",
+              ', '.join(filenames), ', labels.txt', sep='')
+
+    # Data for RE
+    elif args.task.lower() == 're':
+        # {dataset_name: (ehr_data, ade_data, is_test, is_label)}
+        files = {'train': (train, ade_train, False, True), 'test': (test, ade_test, True, False),
+                 'test_labels': (test, ade_test, True, True)}
+
+        for filename, data in files.items():
+            generate_re_input_files(ehr_records=data[0], ade_records=data[1],
+                                    filename=args.target_dir + filename + '.' + args.ext,
+                                    max_len=args.max_seq_len, sep=args.sep,
+                                    is_test=data[2], is_label=data[3])
+
+    save_pickle(args.target_dir + 'train', {"EHR": train, "ADE": ade_train})
+    save_pickle(args.target_dir + 'test', {"EHR": test, "ADE": ade_test})
 
     print("\nGenerating files successful. Files generated: ",
-          ', '.join(filenames), ', labels.txt', sep='')
-
+          'train.tsv', 'test.tsv', 'test_labels.tsv', 'labels.txt', sep=' ')
 
 if __name__ == '__main__':
     main()
