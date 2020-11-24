@@ -19,8 +19,6 @@
 import logging
 import os
 import sys
-import pdb
-import subprocess
 
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
@@ -32,7 +30,6 @@ from torch import nn
 from transformers import (
     AutoConfig,
     AutoModelForTokenClassification,
-    AutoModel,
     AutoTokenizer,
     EvalPrediction,
     HfArgumentParser,
@@ -204,7 +201,8 @@ def main():
         else None
     )
 
-    def align_predictions(predictions: np.ndarray, label_ids: np.ndarray) -> Tuple[List[int], List[int]]:
+    def align_predictions(predictions: np.ndarray, label_ids: np.ndarray) \
+            -> Tuple[List[List[str]], List[List[str]]]:
         preds = np.argmax(predictions, axis=2)
 
         batch_size, seq_len = preds.shape
@@ -265,8 +263,7 @@ def main():
                     writer.write("%s = %s\n" % (key, value))
 
             results.update(result)
-    
-    
+
     # Predict
     if training_args.do_predict:
         test_dataset = NerDataset(
@@ -293,7 +290,6 @@ def main():
                     logger.info("  %s = %s", key, value)
                     writer.write("%s = %s\n" % (key, value))
 
-        
         output_test_predictions_file = os.path.join(training_args.output_dir, "test_predictions.txt")
         if trainer.is_world_master():
             with open(output_test_predictions_file, "w") as writer:
@@ -315,7 +311,7 @@ def main():
     return results
 
 
-def _mp_fn(index):
+def _mp_fn():
     # For xla_spawn (TPUs)
     main()
 
