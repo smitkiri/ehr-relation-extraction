@@ -1,0 +1,94 @@
+# ======Generate data variables========
+task=re
+input_dir=data/
+ade_dir=ade_corpus/
+target_dir=biobert_re/dataset/
+max_seq_len=128
+dev_split=0
+test_split=0.2
+tokenizer=biobert-base
+file_ext=tsv
+sep="\t"
+
+# ========BioBERT NER training variables========
+ner_biobert_save_dir=./output
+ner_biobert_data_dir=./dataset
+ner_biobert_model_name=dmis-lab/biobert-large-cased-v1.1
+ner_biobert_max_len=128
+ner_biobert_batch_size=8
+ner_biobert_epochs=1
+ner_biobert_save_steps=4000
+ner_biobert_seed=0
+
+# ========BioBERT RE training variables========
+re_biobert_save_dir=./output
+re_biobert_data_dir=./dataset
+re_biobert_model_name=dmis-lab/biobert-base-cased-v1.1
+re_biobert_config_name=bert-base-cased
+re_biobert_max_len=128
+re_biobert_batch_size=16
+re_biobert_epochs=1
+re_biobert_save_steps=4000
+re_biobert_seed=1
+re_biobert_lr=5e-5
+
+# ========FastAPI========
+fast_api_fname=fast_api
+
+
+# Generates data
+generate-data:
+	python generate_data.py \
+	--task ${task} \
+	--input_dir ${input_dir} \
+	--ade_dir ${ade_dir} \
+	--target_dir ${target_dir} \
+	--max_seq_len ${max_seq_len} \
+	--dev_split ${dev_split} \
+	--test_split ${test_split} \
+	--tokenizer ${tokenizer} \
+	--ext ${file_ext} \
+	--sep ${sep}
+
+# Trains BioBERT NER model
+train-biobert-ner:
+	python run_ner.py \
+    --data_dir ${ner_biobert_data_dir}/ \
+    --labels ${ner_biobert_data_dir}/labels.txt \
+    --model_name_or_path ${ner_biobert_model_name} \
+    --output_dir ${ner_biobert_save_dir}/ \
+    --max_seq_length ${ner_biobert_max_len} \
+    --num_train_epochs ${ner_biobert_epochs} \
+    --per_device_train_batch_size ${ner_biobert_batch_size} \
+    --save_steps ${ner_biobert_save_steps} \
+    --seed ${ner_biobert_seed} \
+    --do_train \
+    --do_eval \
+    --do_predict \
+    --overwrite_output_dir
+
+# Trains the BiLSTM NER model
+train-bilstm:
+	python train.py
+
+# Trains BioBERT RE model
+train-biobert-re:
+	python run_re.py \
+    --task_name ehr-re \
+    --config_name ${re_biobert_config_name} \
+    --data_dir ${re_biobert_data_dir} \
+    --model_name_or_path ${re_biobert_model_name} \
+    --max_seq_length ${re_biobert_max_len} \
+    --num_train_epochs ${re_biobert_epochs} \
+    --per_device_train_batch_size ${re_biobert_batch_size} \
+    --save_steps ${re_biobert_save_steps} \
+    --seed ${re_biobert_seed} \
+    --do_train \
+    --do_predict \
+    --learning_rate ${re_biobert_lr} \
+    --output_dir ${re_biobert_save_dir} \
+    --overwrite_output_dir
+
+# Starts the FastAPI server
+start-api:
+	uvicorn ${fast_api_fname}:app --reload
