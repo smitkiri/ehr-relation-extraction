@@ -291,8 +291,8 @@ def process_ade_files(ade_data: List[dict]) -> List[dict]:
     return ade_records
 
 
-def map_entities(entities: List[Entity],
-                 actual_relations: List[Relation] = None) \
+def map_entities(entities: Union[List[Entity], Dict[str, Entity]],
+                 actual_relations: Union[List[Relation], Dict[str, Relation]] = None) \
         -> Union[List[Relation], List[Tuple[Relation, int]]]:
     """
     Maps each drug entity to all other non-drug entities in the list.
@@ -313,6 +313,12 @@ def map_entities(entities: List[Entity],
         also returns a flag to indicate if it is an actual relation.
 
     """
+    if isinstance(entities, dict):
+        entities = list(entities.values())
+
+    if actual_relations and isinstance(actual_relations, dict):
+        actual_relations = list(actual_relations.values())
+
     drug_entities = []
     non_drug_entities = []
 
