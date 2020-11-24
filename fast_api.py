@@ -24,6 +24,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 @app.post("/ner/")
 def create_ehr(ner_input: NERTask):
     """Request EHR text data and the model choice for NER Task"""
@@ -31,7 +32,7 @@ def create_ehr(ner_input: NERTask):
     predictions = get_ner_predictions(
         ehr_record=ner_input.ehr_text,
         model_name=ner_input.model_choice)
-    
+
     html_ehr = display_ehr(
         text=ner_input.ehr_text,
         entities=predictions,
