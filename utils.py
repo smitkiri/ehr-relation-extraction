@@ -248,6 +248,9 @@ def process_ade_files(ade_data: List[dict]) -> List[dict]:
         e_num = 1
         for ent in ade['entities']:
             ent_id = 'T' + "%s" % e_num
+            if ent['type'] == 'Adverse-Effect':
+                ent['type'] = 'ADE'
+
             ent_obj = Entity(entity_id=ent_id,
                              entity_type=ent['type'])
 
