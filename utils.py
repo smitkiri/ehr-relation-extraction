@@ -20,10 +20,12 @@ COLORS = {"Drug": "#aa9cfc", "Strength": "#ff9561",
           "Reason": "#e4e7d2", "ADE": "#ff8197",
           "Duration": "#97c4f5"}
 
+
+# noinspection PyTypeChecker
 def display_ehr(text: str,
                 entities: Union[Dict[str, Entity], List[Entity]],
                 return_html: bool = False) -> Union[None, str]:
-    '''
+    """
     Highlights EHR records with colors and displays
     them as HTML. Ideal for working with Jupyter Notebooks
 
@@ -44,12 +46,12 @@ def display_ehr(text: str,
         If return_html is true, returns html strings
         otherwise displays HTML.
 
-    '''
+    """
     if isinstance(entities, dict):
         entities = list(entities.values())
 
     # Sort entity by starting range
-    entities.sort(key = lambda ent: ent.range[0])
+    entities.sort(key=lambda x: x.range[0])
 
     # Final text to render
     render_text = ""
@@ -58,7 +60,7 @@ def display_ehr(text: str,
     if not return_html:
         # Display legend
         for ent, col in COLORS.items():
-            render_text += TPL_HTML.format(content = ent, color = col)
+            render_text += TPL_HTML.format(content=ent, color=col)
             render_text += "&nbsp" * 5
 
         render_text += '\n'
@@ -67,17 +69,20 @@ def display_ehr(text: str,
 
     # Replace each character range with HTML span template
     for ent in entities:
+        if start_idx > ent.range[0]:
+            continue
+
         render_text += text[start_idx:ent.range[0]]
 
         if return_html:
             render_text += TPL_HTML_HOVER.format(
-                content = text[ent.range[0]:ent.range[1]],
-                color = COLORS[ent.name],
-                ent_type = ent.name)
+                content=text[ent.range[0]:ent.range[1]],
+                color=COLORS[ent.name],
+                ent_type=ent.name)
         else:
             render_text += TPL_HTML.format(
-                content = text[ent.range[0]:ent.range[1]],
-                color = COLORS[ent.name])
+                content=text[ent.range[0]:ent.range[1]],
+                color=COLORS[ent.name])
 
         start_idx = ent.range[1]
 
@@ -95,7 +100,7 @@ def read_data(data_dir: str = 'data/',
               train_ratio: int = 0.8,
               tokenizer: Callable[[str], List[str]] = None,
               verbose: int = 0) -> Tuple[List[HealthRecord], List[HealthRecord]]:
-    '''
+    """
     Reads train and test data
 
     Parameters
@@ -117,11 +122,11 @@ def read_data(data_dir: str = 'data/',
     Tuple[List[HealthRecord], List[HealthRecord]]
         Train data, Test data.
 
-    '''
+    """
     # Get all the IDs of data
-    file_ids = sorted(list(set(['.'.join(fname.split('.')[:-1])\
-                                for fname in os.listdir(data_dir)\
-                                    if not fname.startswith('.')])))
+    file_ids = sorted(list(set(['.'.join(fname.split('.')[:-1]) \
+                                for fname in os.listdir(data_dir) \
+                                if not fname.startswith('.')])))
 
     # Splitting IDs into random training and test data
     random.seed(0)
@@ -136,32 +141,32 @@ def read_data(data_dir: str = 'data/',
 
     train_data = []
     for idx, fid in enumerate(train_ids):
-        record = HealthRecord(fid, text_path = data_dir + fid + '.txt',
-                              ann_path = data_dir + fid + '.ann',
-                              tokenizer = tokenizer)
+        record = HealthRecord(fid, text_path=data_dir + fid + '.txt',
+                              ann_path=data_dir + fid + '.ann',
+                              tokenizer=tokenizer)
         train_data.append(record)
         if verbose == 1:
-            drawProgressBar(idx + 1, split_idx)
+            draw_progress_bar(idx + 1, split_idx)
 
     if verbose == 1:
         print('\n\nTest Data:')
 
     test_data = []
     for idx, fid in enumerate(test_ids):
-        record = HealthRecord(fid, text_path = data_dir + fid + '.txt',
-                              ann_path = data_dir + fid + '.ann',
-                              tokenizer = tokenizer)
+        record = HealthRecord(fid, text_path=data_dir + fid + '.txt',
+                              ann_path=data_dir + fid + '.ann',
+                              tokenizer=tokenizer)
         test_data.append(record)
         if verbose == 1:
-            drawProgressBar(idx + 1, len(file_ids) - split_idx)
+            draw_progress_bar(idx + 1, len(file_ids) - split_idx)
 
-    return (train_data, test_data)
+    return train_data, test_data
 
 
 def read_ade_data(ade_data_dir: str = 'ade_data/',
                   train_ratio: int = 0.8,
                   verbose: int = 0) -> Tuple[List[Dict], List[Dict]]:
-    '''
+    """
     Reads train and test ADE data
 
     Parameters
@@ -181,19 +186,19 @@ def read_ade_data(ade_data_dir: str = 'ade_data/',
     Tuple[List[Dict], List[Dict]]
         Train ADE data, Test ADE data.
 
-    '''
+    """
 
     # Get all the IDs of ADE data
-    ade_file_ids = sorted(list(set(['.'.join(fname.split('.')[:-1])\
-                                  for fname in os.listdir(ade_data_dir)\
-                                      if not fname.startswith('.')])))
+    ade_file_ids = sorted(list(set(['.'.join(fname.split('.')[:-1]) \
+                                    for fname in os.listdir(ade_data_dir) \
+                                    if not fname.startswith('.')])))
 
     # Load ADE data
     ade_data = []
     for idx, fid in enumerate(ade_file_ids):
-      with open(ade_data_dir+fid +'.json') as f:
-        data = json.load(f)
-        ade_data.extend(data)
+        with open(ade_data_dir + fid + '.json') as f:
+            data = json.load(f)
+            ade_data.extend(data)
 
     random.seed(0)
     random.shuffle(ade_data)
@@ -202,104 +207,99 @@ def read_ade_data(ade_data_dir: str = 'ade_data/',
 
     ade_train_data = process_ade_files(ade_data[:ade_split_idx])
     if verbose == 1:
-      print("\n\nADE Train data:")
-      print("Done.")
+        print("\n\nADE Train data:")
+        print("Done.")
 
     ade_test_data = process_ade_files(ade_data[ade_split_idx:])
     if verbose == 1:
-      print("\nADE Test data:")
-      print("Done.")
+        print("\nADE Test data:")
+        print("Done.")
+
+    return ade_train_data, ade_test_data
 
 
-    return (ade_train_data, ade_test_data)
-
-
-def process_ade_files(ade_data: dict) -> dict:
-    '''
+def process_ade_files(ade_data: List[dict]) -> List[dict]:
+    """
     Extracts tokens and creates Entity and Relation objects
     from raw json data.
 
     Parameters
     ----------
-    ade_data : dict
+    ade_data : List[dict]
         Raw json data.
 
     Returns
     -------
-    dict
+    List[dict]
         Tokens, entities and relations.
 
-    '''
+    """
     ade_records = []
 
     for ade in ade_data:
-      entities = {}
-      relations = {}
-      relation_backlog = []
+        entities = {}
+        relations = {}
+        relation_backlog = []
 
-      # Tokens
-      tokens = ade['tokens']
+        # Tokens
+        tokens = ade['tokens']
 
-      # Entities
-      E_num = 1
-      for ent in ade['entities']:
-        ent_id = 'T'+"%s"%E_num
+        # Entities
+        e_num = 1
+        for ent in ade['entities']:
+            ent_id = 'T' + "%s" % e_num
+            ent_obj = Entity(entity_id=ent_id,
+                             entity_type=ent['type'])
 
-        if ent['type'] == 'Adverse-Effect':
-            ent['type'] = 'ADE'
+            r = [ent['start'], ent['end'] - 1]
+            r = list(map(int, r))
+            ent_obj.set_range(r)
 
-        ent_obj = Entity(entity_id=ent_id,
-                        entity_type=ent['type'])
+            text = ''
+            for token_ent in ade['tokens'][ent['start']:ent['end']]:
+                text += token_ent + ' '
+            ent_obj.set_text(text)
 
-        r = [ent['start'], ent['end']-1]
-        r = list(map(int, r))
-        ent_obj.set_range(r)
+            entities[ent_id] = ent_obj
+            e_num += 1
 
-        text = ''
-        for token_ent in ade['tokens'][ent['start']:ent['end']]:
-          text += token_ent + ' '
-        ent_obj.set_text(text)
+            # Relations
+        r_num = 1
+        for relation in ade['relations']:
+            rel_id = 'R' + "%s" % r_num
+            rel_details = 'ADE-Drug'
+            entity1 = "T" + str(relation['head'] + 1)
+            entity2 = "T" + str(relation['tail'] + 1)
 
-        entities[ent_id] = ent_obj
-        E_num+=1
+            if entity1 in entities and entity2 in entities:
+                rel = Relation(relation_id=rel_id,
+                               relation_type=rel_details,
+                               arg1=entities[entity1],
+                               arg2=entities[entity2])
 
-      # Relations
-      R_num = 1
-      for relation in ade['relations']:
-        rel_id = 'R'+"%s"%R_num
-        rel_details = 'ADE-Drug'
-        entity1 = "T"+str(relation['head']+1)
-        entity2 = "T"+str(relation['tail']+1)
+                relations[rel_id] = rel
 
-        if entity1 in entities and entity2 in entities:
-          rel = Relation(relation_id = rel_id,
-                        relation_type = rel_details,
-                        arg1 = entities[entity1],
-                        arg2 = entities[entity2])
+            else:
+                relation_backlog.append([rel_id, rel_details,
+                                         entity1, entity2])
+            r_num += 1
 
-          relations[rel_id] = rel
-
-        else:
-          relation_backlog.append([rel_id, rel_details,
-                                  entity1, entity2])
-        R_num+=1
-
-      ade_records.append({"tokens":tokens, "entities": entities, "relations": relations})
+        ade_records.append({"tokens": tokens, "entities": entities, "relations": relations})
     return ade_records
 
 
-def map_entities(entities: Union[Dict[str, Entity], List[Entity]],
-                 actual_relations: Union[Dict[str, Relation], List[Relation]] = None) \
-    -> Union[List[Relation], List[Tuple[Relation, int]]]:
-    '''
+def map_entities(entities: List[Entity],
+                 actual_relations: List[Relation] = None) \
+        -> Union[List[Relation], List[Tuple[Relation, int]]]:
+    """
     Maps each drug entity to all other non-drug entities in the list.
 
     Parameters
     ----------
-    entities : List[Entity] or Dict[str, Entity]
+    entities : List[Entity]
         List of entities.
 
-    actual_relations : List[Relation] or Dict[str, Relation], optional
+    actual_relations : List[Relation], optional
         List of actual relations (for training data).
         The default is None.
 
@@ -309,16 +309,9 @@ def map_entities(entities: Union[Dict[str, Entity], List[Entity]],
         List of mapped relations. If actual relations are specified,
         also returns a flag to indicate if it is an actual relation.
 
-    '''
-
+    """
     drug_entities = []
     non_drug_entities = []
-
-    if isinstance(entities, dict):
-        entities = list(entities.values())
-
-    if isinstance(actual_relations, dict):
-        actual_relations = list(actual_relations.values())
 
     # Splitting each entity to drug and non-drug entities
     for ent in entities:
@@ -333,9 +326,9 @@ def map_entities(entities: Union[Dict[str, Entity], List[Entity]],
     # Mapping each drug entity to each non-drug entity
     for ent1 in drug_entities:
         for ent2 in non_drug_entities:
-            rel = Relation(relation_id = "R%d" % i,
-                           relation_type = ent2.name + "-Drug",
-                           arg1 = ent1, arg2 = ent2)
+            rel = Relation(relation_id="R%d" % i,
+                           relation_type="Drug-" + ent2.name,
+                           arg1=ent1, arg2=ent2)
             relations.append(rel)
             i += 1
 
@@ -362,8 +355,9 @@ def map_entities(entities: Union[Dict[str, Entity], List[Entity]],
 
     return list(zip(relations, relation_flags))
 
-def drawProgressBar(current, total, string = '', barLen = 20):
-    '''
+
+def draw_progress_bar(current, total, string='', bar_len=20):
+    """
     Draws a progress bar, like [====>    ] 40%
 
     Parameters
@@ -377,29 +371,29 @@ def drawProgressBar(current, total, string = '', barLen = 20):
     string: str
             Additional details to write along with progress
 
-    barLen: int
+    bar_len: int
             Length of progress bar
-    '''
+    """
     percent = current / total
     arrow = ">"
     if percent == 1:
         arrow = ""
-    # Carriage return, returns to the begining of line to owerwrite
+    # Carriage return, returns to the beginning of line to overwrite
     sys.stdout.write("\r")
-    sys.stdout.write("Progress: [{:<{}}] {}/{}".format("=" * int(barLen * percent) + arrow,
-                                                         barLen, current, total) + string)
+    sys.stdout.write("Progress: [{:<{}}] {}/{}".format("=" * int(bar_len * percent) + arrow,
+                                                       bar_len, current, total) + string)
     sys.stdout.flush()
 
 
 def is_whitespace(char):
-    '''
+    """
     Checks if the character is a whitespace
 
     Parameters
     --------------
     char: str
           A single character string to check
-    '''
+    """
     # ord() returns unicode and 0x202F is the unicode for whitespace
     if char == " " or char == "\t" or char == "\r" or char == "\n" or ord(char) == 0x202F:
         return True
@@ -408,14 +402,14 @@ def is_whitespace(char):
 
 
 def is_punct(char):
-    '''
+    """
     Checks if the character is a punctuation
 
     Parameters
     --------------
     char: str
           A single character string to check
-    '''
+    """
     if char == "." or char == "," or char == "!" or char == "?" or char == '\\':
         return True
     else:
@@ -423,7 +417,7 @@ def is_punct(char):
 
 
 def save_pickle(file, variable):
-    '''
+    """
     Saves variable as a pickle file
 
     Parameters
@@ -433,7 +427,7 @@ def save_pickle(file, variable):
 
     variable: object
               The variable to be stored in a file
-    '''
+    """
     if file.split('.')[-1] != "pkl":
         file += ".pkl"
 
@@ -443,14 +437,14 @@ def save_pickle(file, variable):
 
 
 def open_pickle(file):
-    '''
+    """
     Returns the variable after reading it from a pickle file
 
     Parameters
     -----------
     file: str
           File name/path from which variable is to be loaded
-    '''
+    """
     if file.split('.')[-1] != "pkl":
         file += ".pkl"
 
