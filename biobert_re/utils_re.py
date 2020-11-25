@@ -11,17 +11,20 @@ from torch.utils.data.dataset import Dataset
 
 from filelock import FileLock
 
-#from transformers.utils import logging
+import logging
 from transformers.data.processors.utils import InputFeatures
 from transformers.tokenization_utils_base import PreTrainedTokenizerBase
 
-from biobert_re.data_processor import glue_convert_examples_to_features, glue_output_modes, glue_processors
+import sys
+sys.path.append("../")
+sys.path.append('./biobert_re/')
+
+from data_processor import glue_convert_examples_to_features, glue_output_modes, glue_processors
 
 import utils
 from ehr import HealthRecord
 
-
-#logger = logging.get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -113,9 +116,9 @@ class REDataset(Dataset):
             if os.path.exists(cached_features_file) and not args.overwrite_cache:
                 start = time.time()
                 self.features = torch.load(cached_features_file)
-#                logger.info( f"Loading features from cached file {cached_features_file} [took %.3f s]", time.time() - start)
+                logger.info(f"Loading features from cached file {cached_features_file} [took %.3f s]", time.time() - start)
             else:
-#                logger.info(f"Creating features from dataset file at {args.data_dir}")
+                logger.info(f"Creating features from dataset file at {args.data_dir}")
 
                 if mode == Split.dev:
                     examples = self.processor.get_dev_examples(args.data_dir)
@@ -135,7 +138,7 @@ class REDataset(Dataset):
                 start = time.time()
                 torch.save(self.features, cached_features_file)
 
-#                logger.info("Saving features into cached file %s [took %.3f s]", cached_features_file, time.time() - start)
+                logger.info("Saving features into cached file %s [took %.3f s]", cached_features_file, time.time() - start)
 
     def __len__(self):
         return len(self.features)
@@ -153,11 +156,14 @@ def replace_ent_label(text, ent_type, start_idx, end_idx):
 
 
 def write_file(file, index, sentence, label, sep, is_test, is_label):
-    if is_test and is_label:  # test_original - test with labels
-        file.write('{}{}{}{}{}'.format(index, sep, sentence , sep, label))
-    elif is_test and not is_label:  # test - test with no labels
+    if is_test and is_label:
+        # test_original - test with labels
+        file.write('{}{}{}{}{}'.format(index, sep, sentence, sep, label))
+    elif is_test and not is_label:
+        # test - test with no labels
         file.write('{}{}{}'.format(index, sep, sentence))
-    else: # train
+    else:
+        # train
         file.write('{}{}{}'.format(sentence, sep, label))
     file.write('\n')
 
@@ -165,7 +171,7 @@ def write_file(file, index, sentence, label, sep, is_test, is_label):
 def get_char_split_points(record, max_len):
     char_split_points = []
 
-    split_points = record.get_split_points(max_len = max_len)
+    split_points = record.get_split_points(max_len=max_len)
     for pt in split_points[:-1]:
         char_split_points.append(record.get_char_idx(pt)[1])
 
@@ -199,17 +205,14 @@ def replace_entity_text(split_text, ent1, ent2, split_offset):
 
 
 def generate_re_input_files(ehr_records: List[HealthRecord], filename: str,
-                            ade_records: List[Dict] = None, max_len:int = 128,
+                            ade_records: List[Dict] = None, max_len: int = 128,
                             is_test=False, is_label=False,
                             sep: str = '\t'):
     index = 0
-
-    #import random as rd
     random.seed(0)
 
     with open(filename, 'w') as file:
-
-    # Write headerst
+        # Write headers
         write_file(file, 'index', 'sentence', 'label', sep, is_test, is_label)
 
         # Preprocess EHR records
@@ -225,12 +228,12 @@ def generate_re_input_files(ehr_records: List[HealthRecord], filename: str,
             end = char_split_points[0]
 
             for i in range(len(char_split_points)):
-                # Obtain only entites within the split text
-                range_entities = {ent_id: ent for ent_id, ent in\
-                                  filter(lambda item: int(item[1][0]) >= start and
-                                                                        int(item[1][1]) <= end, entities.items())}
+                # Obtain only entities within the split text
+                range_entities = {ent_id: ent for ent_id, ent in
+                                  filter(lambda item: int(item[1][0]) >= start and int(item[1][1]) <= end,
+                                         entities.items())}
 
-                # Get all posible relations within the split text
+                # Get all possible relations within the split text
                 possible_relations = utils.map_entities(range_entities, true_relations)
 
                 for rel, label in possible_relations:
@@ -245,12 +248,12 @@ def generate_re_input_files(ehr_records: List[HealthRecord], filename: str,
                     ent2 = rel.get_entities()[1]
 
                     # Check if both entities are within split text
-                    if ent1.range[0] >= start and ent1.range[1] < end and\
-                        ent2.range[0] >= start and ent2.range[1] < end:
+                    if ent1.range[0] >= start and ent1.range[1] < end and \
+                            ent2.range[0] >= start and ent2.range[1] < end:
 
                         modified_text = replace_entity_text(split_text, ent1, ent2, split_offset)
 
-                        # Replace unrequired characters with space
+                        # Replace un-required characters with space
                         final_text = modified_text.replace('\n', ' ').replace('\t', ' ')
 
                         write_file(file, index, final_text, label, sep, is_test, is_label)
@@ -288,7 +291,7 @@ def generate_re_input_files(ehr_records: List[HealthRecord], filename: str,
                     """Remove consecutive repeating entities.
                     Eg. this is @ADE$ @ADE$ @ADE$ for @Drug$ @Drug$ -> this is @ADE$ for @Drug$"""
                     final_tokens = [new_tokens[i] for i in range(len(new_tokens))\
-                                    if (i==0) or new_tokens[i] != new_tokens[i-1]]
+                                    if (i == 0) or new_tokens[i] != new_tokens[i-1]]
 
                     final_text = " ".join(final_tokens)
 

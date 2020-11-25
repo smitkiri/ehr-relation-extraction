@@ -27,6 +27,8 @@ biobert_ner/output*/
 bilstm-crf_ner/results/
 bilstm_crf_ner/data/
 biobert_re/dataset/
+biobert_re/output/
+biobert_re/runs/
 ade_corpus/
 test_data/
 runs/

@@ -1,21 +1,3 @@
-# coding=utf-8
-# Copyright 2018 The Google AI Language Team Authors and The HuggingFace Inc. team.
-# Copyright (c) 2018, NVIDIA CORPORATION.  All rights reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-""" Finetuning the library models for sequence classification on GLUE (Bert, XLM, XLNet, RoBERTa, Albert, XLM-RoBERTa)."""
-
-
 import dataclasses
 import logging
 import os
@@ -79,7 +61,6 @@ def main():
     else:
         model_args, data_args, training_args = parser.parse_args_into_dataclasses()
 
-
     if (
         os.path.exists(training_args.output_dir)
         and os.listdir(training_args.output_dir)
@@ -112,8 +93,7 @@ def main():
         num_labels = glue_tasks_num_labels[data_args.task_name]
         output_mode = glue_output_modes[data_args.task_name]
     except KeyError:
-        raise ValueError("Task not found: %s" % (data_args.task_name))
-
+        raise ValueError("Task not found: %s" % data_args.task_name)
 
     # Load tokenizer
     tokenizer = AutoTokenizer.from_pretrained(
@@ -143,7 +123,6 @@ def main():
 
     # Currently, this code do not support distributed training.
     training_args.warmup_steps = int(model_args.warmup_proportion * (len(train_dataset) / training_args.per_device_train_batch_size) * training_args.num_train_epochs)
-    training_args_weight_decay = 0.01
     logger.info("Training/evaluation parameters %s", training_args)
 
     config = AutoConfig.from_pretrained(
@@ -165,6 +144,8 @@ def main():
                 preds = np.argmax(p.predictions, axis=1)
             elif output_mode == "regression":
                 preds = np.squeeze(p.predictions)
+            else:
+                raise ValueError("Output mode can only be classification or regression")
             return glue_compute_metrics(task_name, preds, p.label_ids)
 
         return compute_metrics_fn
@@ -230,8 +211,7 @@ def main():
             output_test_file = os.path.join(
                 training_args.output_dir,
                 f"test_results.txt"
-                #f"test_results_{test_dataset.args.task_name}.txt"
-            )
+                )
             if trainer.is_world_master():
                 with open(output_test_file, "w") as writer:
                     logger.info("***** Test results {} *****".format(test_dataset.args.task_name))
@@ -245,7 +225,7 @@ def main():
     return eval_results
 
 
-def _mp_fn(index):
+def _mp_fn():
     # For xla_spawn (TPUs)
     main()
 
