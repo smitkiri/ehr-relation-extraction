@@ -134,7 +134,7 @@ def main():
     if not os.path.isdir(args.target_dir):
         os.mkdir(args.target_dir)
 
-    if args.task == 'RE':
+    if args.task.lower() == 're':
         args.dev_split = 0
         args.sep = '\t'
         args.ext = 'tsv'
