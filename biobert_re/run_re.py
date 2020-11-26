@@ -208,7 +208,7 @@ def main():
                         writer.write("%d\t%s\n" % (index, item))
 
                 output_label_file = os.path.join(
-                    training_args.output_dir,
+                    training_args.data_dir,
                     f"test_labels.tsv"
                     )
 
