@@ -27,8 +27,8 @@ re_biobert_model_name=dmis-lab/biobert-base-cased-v1.1
 re_biobert_config_name=bert-base-cased
 re_biobert_max_len=128
 re_biobert_batch_size=8
-re_biobert_epochs=1
-re_biobert_save_steps=4000
+re_biobert_epochs=3
+re_biobert_save_steps=6264
 re_biobert_seed=1
 re_biobert_lr=5e-5
 
@@ -87,6 +87,7 @@ train-biobert-re:
     --save_steps ${re_biobert_save_steps} \
     --seed ${re_biobert_seed} \
     --do_train \
+    --do_eval \
     --do_predict \
     --learning_rate ${re_biobert_lr} \
     --output_dir ${re_biobert_save_dir} \

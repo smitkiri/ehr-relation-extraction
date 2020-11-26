@@ -15,6 +15,10 @@ import logging
 from transformers.data.processors.utils import InputFeatures
 from transformers.tokenization_utils_base import PreTrainedTokenizerBase
 
+import pandas as pd
+from sklearn.metrics import precision_recall_fscore_support
+
+
 import sys
 sys.path.append("../")
 sys.path.append('./biobert_re/')
@@ -148,7 +152,6 @@ class REDataset(Dataset):
 
     def get_labels(self):
         return self.label_list
-
 
 
 def replace_ent_label(text, ent_type, start_idx, end_idx):
@@ -310,3 +313,29 @@ def generate_re_input_files(ehr_records: List[HealthRecord], filename: str,
 
     filename, ext = filename.split('.')
     utils.save_pickle(filename+'_rel.pkl', index_rel_label_map)
+
+
+def get_eval_results(answer_path, output_path):
+    """
+    Get evaluation metrics for predictions
+
+    Parameters
+    ------------
+    answer_path : test.tsv file. Tab-separated.
+                  One example per a line. True labels at the 3rd column.
+
+    output_path : test_predictions.txt. Model generated predictions.
+    """
+    testdf = pd.read_csv(answer_path, sep="\t", index_col=0)
+    preddf = pd.read_csv(output_path, sep="\t", header=None)
+
+    pred = [preddf.iloc[i].tolist() for i in preddf.index]
+    pred_class = [int(v[1]) for v in pred[1:]]
+
+    p, r, f, s = precision_recall_fscore_support(y_pred=pred_class, y_true=testdf["label"])
+    results = dict()
+    results["f1 score"] = f[1]
+    results["recall"] = r[1]
+    results["precision"] = p[1]
+    results["specificity"] = r[0]
+    return results

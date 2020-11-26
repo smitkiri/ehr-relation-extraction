@@ -17,7 +17,7 @@ from transformers import (
 )
 
 from data_processor import glue_output_modes, glue_tasks_num_labels
-from utils_re import REDataset
+from utils_re import REDataset, get_eval_results
 
 from metrics import glue_compute_metrics
 
@@ -197,24 +197,33 @@ def main():
 
             output_test_file = os.path.join(
                 training_args.output_dir,
-                f"test_results.txt"
+                f"test_predictions.txt"
                 )
             if trainer.is_world_master():
                 with open(output_test_file, "w") as writer:
                     logger.info("***** Test results {} *****".format(test_dataset.args.task_name))
                     writer.write("index\tprediction\n")
                     for index, item in enumerate(predictions):
-                        if output_mode == "regression":
-                            writer.write("%d\t%3.3f\n" % (index, item))
-                        else:
-                            item = test_dataset.get_labels()[item]
-                            writer.write("%d\t%s\n" % (index, item))
+                        item = test_dataset.get_labels()[item]
+                        writer.write("%d\t%s\n" % (index, item))
+
+                output_label_file = os.path.join(
+                    training_args.output_dir,
+                    f"test_labels.tsv"
+                    )
+
+                output_test_result_file = os.path.join(
+                    training_args.output_dir,
+                    f"test_results.txt"
+                    )
+
+                test_result = get_eval_results(output_label_file, output_test_file)
+                with open(output_test_result_file, "w") as writer:
+                    for key, value in test_result.items():
+                        logger.info("  %s = %s", key, value)
+                        writer.write("%s = %s\n" % (key, value))
+
     return eval_results
-
-
-def _mp_fn():
-    # For xla_spawn (TPUs)
-    main()
 
 
 if __name__ == "__main__":
