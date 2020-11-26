@@ -116,13 +116,13 @@ def re_generator(files: Dict[str, tuple], args):
         generate_re_input_files(ehr_records=data[0], ade_records=data[1],
                                 filename=args.target_dir + filename + '.' + args.ext,
                                 max_len=args.max_seq_len, sep=args.sep,
-                                is_test=data[2], is_label=data[3])
+                                is_train=True, is_label=data[2])
 
     save_pickle(args.target_dir + 'train', {"EHR": files['train'][0], "ADE": files['train'][1]})
-    save_pickle(args.target_dir + 'test', {"EHR": files['test'][0], "ADE": files['test'][1]})
+    save_pickle(args.target_dir + 'test',  {"EHR": files['test'][0],  "ADE": files['test'][1]})
 
     print("\nGenerating files successful. Files generated: ",
-          'train.tsv,', 'test.tsv,', 'test_labels.tsv,', 'labels.txt', sep=' ')
+          'train.tsv,', 'test.tsv', 'train_rel_labels.pkl', 'test_rel_labels.pkl' , sep=' ')
 
 
 def main():
@@ -213,9 +213,8 @@ def main():
 
     # Data for RE
     elif args.task.lower() == 're':
-        # {dataset_name: (ehr_data, ade_data, is_test, is_label)}
-        files = {'train': (train, ade_train, False, True), 'test': (test, ade_test, True, False),
-                 'test_labels': (test, ade_test, True, True)}
+        # {dataset_name: (ehr_data, ade_data, is_label)}
+        files = {'train': (train, ade_train, True), 'test': (test, ade_test, False)}
 
         re_generator(files, args)
 
