@@ -293,8 +293,8 @@ def process_ade_files(ade_data: List[dict]) -> List[dict]:
 
 def map_entities(entities: Union[Dict[str, Entity], List[Entity]],
                  actual_relations: Union[Dict[str, Relation], List[Relation]] = None) \
-    -> Union[List[Relation], List[Tuple[Relation, int]]]:
-    '''
+        -> Union[List[Tuple[Relation, None]], List[Tuple[Relation, int]]]:
+    """
     Maps each drug entity to all other non-drug entities in the list.
 
     Parameters
@@ -312,7 +312,7 @@ def map_entities(entities: Union[Dict[str, Entity], List[Entity]],
         List of mapped relations. If actual relations are specified,
         also returns a flag to indicate if it is an actual relation.
 
-    '''
+    """
 
     drug_entities = []
     non_drug_entities = []
@@ -320,7 +320,7 @@ def map_entities(entities: Union[Dict[str, Entity], List[Entity]],
     if isinstance(entities, dict):
         entities = list(entities.values())
 
-    if isinstance(actual_relations, dict):
+    if actual_relations and isinstance(actual_relations, dict):
         actual_relations = list(actual_relations.values())
 
     # Splitting each entity to drug and non-drug entities
@@ -336,9 +336,9 @@ def map_entities(entities: Union[Dict[str, Entity], List[Entity]],
     # Mapping each drug entity to each non-drug entity
     for ent1 in drug_entities:
         for ent2 in non_drug_entities:
-            rel = Relation(relation_id = "R%d" % i,
-                           relation_type = ent2.name + "-Drug",
-                           arg1 = ent1, arg2 = ent2)
+            rel = Relation(relation_id="R%d" % i,
+                           relation_type=ent2.name + "-Drug",
+                           arg1=ent1, arg2=ent2)
             relations.append(rel)
             i += 1
 
@@ -364,7 +364,6 @@ def map_entities(entities: Union[Dict[str, Entity], List[Entity]],
         flag = 0
 
     return list(zip(relations, relation_flags))
-
 
 
 def draw_progress_bar(current, total, string='', bar_len=20):

@@ -122,7 +122,7 @@ def re_generator(files: Dict[str, tuple], args):
     save_pickle(args.target_dir + 'test',  {"EHR": files['test'][0],  "ADE": files['test'][1]})
 
     print("\nGenerating files successful. Files generated: ",
-          'train.tsv,', 'test.tsv', 'train_rel_labels.pkl', 'test_rel_labels.pkl' , sep=' ')
+          'train.tsv,', 'test.tsv', 'train_rel_labels.pkl', 'test_rel_labels.pkl', sep=' ')
 
 
 def main():
