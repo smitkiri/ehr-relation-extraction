@@ -116,13 +116,14 @@ def re_generator(files: Dict[str, tuple], args):
         generate_re_input_files(ehr_records=data[0], ade_records=data[1],
                                 filename=args.target_dir + filename + '.' + args.ext,
                                 max_len=args.max_seq_len, sep=args.sep,
-                                is_train=True, is_label=data[2])
+                                is_test=data[2], is_label=data[3])
 
     save_pickle(args.target_dir + 'train', {"EHR": files['train'][0], "ADE": files['train'][1]})
     save_pickle(args.target_dir + 'test',  {"EHR": files['test'][0],  "ADE": files['test'][1]})
 
     print("\nGenerating files successful. Files generated: ",
-          'train.tsv,', 'test.tsv', 'train_rel_labels.pkl', 'test_rel_labels.pkl', sep=' ')
+          'train.tsv,', 'dev.tsv,', 'test.tsv,',
+          'test_labels.tsv,', 'train_rel.pkl,', 'test_rel.pkl,', 'test_labels_rel.pkl', sep=' ')
 
 
 def main():
@@ -133,12 +134,6 @@ def main():
 
     if not os.path.isdir(args.target_dir):
         os.mkdir(args.target_dir)
-
-    if args.task.lower() == 're':
-        args.dev_split = 0
-        args.sep = '\t'
-        args.ext = 'tsv'
-        args.max_seq_len = 128
 
     if args.tokenizer == "default":
         tokenizer = default_tokenizer
@@ -213,8 +208,9 @@ def main():
 
     # Data for RE
     elif args.task.lower() == 're':
-        # {dataset_name: (ehr_data, ade_data, is_label)}
-        files = {'train': (train, ade_train, True), 'test': (test, ade_test, False)}
+        # {dataset_name: (ehr_data, ade_data, is_test, is_label)}
+        files = {'train': (train, ade_train, False, True), 'dev': (devel, ade_devel, False, True),
+                 'test': (test, ade_test, True, False), 'test_labels': (test, ade_test, True, True)}
 
         re_generator(files, args)
 

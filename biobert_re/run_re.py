@@ -48,9 +48,6 @@ class ModelArguments:
 
 
 def main():
-    # See all possible arguments in src/transformers/training_args.py
-    # or by passing the --help flag to this script.
-    # We now keep distinct sets of args, for a cleaner separation of concerns.
 
     parser = HfArgumentParser((ModelArguments, DataTrainingArguments, TrainingArguments))
 
@@ -140,13 +137,8 @@ def main():
 
     def build_compute_metrics_fn(task_name: str) -> Callable[[EvalPrediction], Dict]:
         def compute_metrics_fn(p: EvalPrediction):
-            if output_mode == "classification":
-                preds = np.argmax(p.predictions, axis=1)
-            elif output_mode == "regression":
-                preds = np.squeeze(p.predictions)
-            else:
-                raise ValueError("Output mode can only be classification or regression")
-            return glue_compute_metrics(task_name, preds, p.label_ids)
+            preds = np.argmax(p.predictions, axis=1)
+            return glue_compute_metrics(preds, p.label_ids)
 
         return compute_metrics_fn
 
@@ -177,11 +169,6 @@ def main():
 
         # Loop to handle MNLI double evaluation (matched, mis-matched)
         eval_datasets = [eval_dataset]
-        if data_args.task_name == "mnli":
-            mnli_mm_data_args = dataclasses.replace(data_args, task_name="mnli-mm")
-            eval_datasets.append(
-                REDataset(mnli_mm_data_args, tokenizer=tokenizer, mode="dev", cache_dir=model_args.cache_dir)
-            )
 
         for eval_dataset in eval_datasets:
             trainer.compute_metrics = build_compute_metrics_fn(eval_dataset.args.task_name)
