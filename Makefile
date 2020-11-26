@@ -4,11 +4,11 @@ input_dir=data/
 ade_dir=ade_corpus/
 target_dir=biobert_re/dataset/
 max_seq_len=128
-dev_split=0
+dev_split=0.1
 test_split=0.2
 tokenizer=biobert-base
 file_ext=tsv
-sep="\t"
+sep=tab
 
 # ========BioBERT NER training variables========
 ner_biobert_save_dir=./output

@@ -132,6 +132,9 @@ def main():
     if args.target_dir[-1] != '/':
         args.target_dir += '/'
 
+    if args.sep == "tab":
+        args.sep = "\t"
+
     if not os.path.isdir(args.target_dir):
         os.mkdir(args.target_dir)
 
