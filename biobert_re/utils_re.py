@@ -150,28 +150,24 @@ class REDataset(Dataset):
         return self.label_list
 
 
+
 def replace_ent_label(text, ent_type, start_idx, end_idx):
     label = '@'+ent_type+'$'
     return text[:start_idx]+label+text[end_idx:]
 
 
-def write_file(file, index, sentence, label, sep, is_test, is_label):
-    if is_test and is_label:
-        # test_original - test with labels
-        file.write('{}{}{}{}{}'.format(index, sep, sentence, sep, label))
-    elif is_test and not is_label:
-        # test - test with no labels
-        file.write('{}{}{}'.format(index, sep, sentence))
-    else:
-        # train
+def write_file(file, index, sentence, label, sep, is_label):
+    if is_label:
         file.write('{}{}{}'.format(sentence, sep, label))
+    else:
+        file.write('{}{}{}'.format(index, sep, sentence))
     file.write('\n')
 
 
 def get_char_split_points(record, max_len):
     char_split_points = []
 
-    split_points = record.get_split_points(max_len=max_len)
+    split_points = record.get_split_points(max_len = max_len)
     for pt in split_points[:-1]:
         char_split_points.append(record.get_char_idx(pt)[1])
 
@@ -205,21 +201,27 @@ def replace_entity_text(split_text, ent1, ent2, split_offset):
 
 
 def generate_re_input_files(ehr_records: List[HealthRecord], filename: str,
-                            ade_records: List[Dict] = None, max_len: int = 128,
-                            is_test=False, is_label=False,
-                            sep: str = '\t'):
-    index = 0
+                            ade_records: List[Dict] = None, max_len:int = 128,
+                            is_train=True, is_label=True, sep: str = '\t'):
+
     random.seed(0)
+
+    index = 0
+    index_rel_label_map = []
 
     with open(filename, 'w') as file:
         # Write headers
-        write_file(file, 'index', 'sentence', 'label', sep, is_test, is_label)
+        write_file(file, 'index', 'sentence', 'label', sep, is_label)
 
         # Preprocess EHR records
         for record in ehr_records:
             text = record.text
             entities = record.get_entities()
-            true_relations = record.get_relations()
+
+            if is_train:
+                true_relations = record.get_relations()
+            else:
+                true_relations = None
 
             # get character split points
             char_split_points = get_char_split_points(record, max_len)
@@ -255,8 +257,13 @@ def generate_re_input_files(ehr_records: List[HealthRecord], filename: str,
 
                         # Replace un-required characters with space
                         final_text = modified_text.replace('\n', ' ').replace('\t', ' ')
+                        write_file(file, index, final_text, label, sep, is_label)
 
-                        write_file(file, index, final_text, label, sep, is_test, is_label)
+                        if is_train:
+                            index_rel_label_map.append({'label':label, 'relation': rel})
+                        else:
+                            index_rel_label_map.append({'relation': rel})
+
                         index += 1
 
                 start = end
@@ -295,5 +302,9 @@ def generate_re_input_files(ehr_records: List[HealthRecord], filename: str,
 
                     final_text = " ".join(final_tokens)
 
-                    write_file(file, index, final_text, label, sep, is_test, is_label)
+                    write_file(file, index, final_text, label, sep, is_label)
+                    index_rel_label_map.append({'label': label, 'relation': rel})
                     index += 1
+
+    filename, ext = filename.split('.')
+    utils.save_pickle(filename+'_rel_labels.pkl', index_rel_label_map)

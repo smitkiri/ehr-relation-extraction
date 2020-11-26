@@ -291,9 +291,9 @@ def process_ade_files(ade_data: List[dict]) -> List[dict]:
     return ade_records
 
 
-def map_entities(entities: Union[List[Entity], Dict[str, Entity]],
-                 actual_relations: Union[List[Relation], Dict[str, Relation]] = None) \
-        -> Union[List[Relation], List[Tuple[Relation, int]]]:
+def map_entities(entities: Union[Dict[str, Entity], List[Entity]],
+                 actual_relations: Union[Dict[str, Relation], List[Relation]] = None) \
+        -> Union[List[Tuple[Relation, None]], List[Tuple[Relation, int]]]:
     """
     Maps each drug entity to all other non-drug entities in the list.
 
@@ -313,14 +313,15 @@ def map_entities(entities: Union[List[Entity], Dict[str, Entity]],
         also returns a flag to indicate if it is an actual relation.
 
     """
+
+    drug_entities = []
+    non_drug_entities = []
+
     if isinstance(entities, dict):
         entities = list(entities.values())
 
     if actual_relations and isinstance(actual_relations, dict):
         actual_relations = list(actual_relations.values())
-
-    drug_entities = []
-    non_drug_entities = []
 
     # Splitting each entity to drug and non-drug entities
     for ent in entities:
@@ -336,13 +337,13 @@ def map_entities(entities: Union[List[Entity], Dict[str, Entity]],
     for ent1 in drug_entities:
         for ent2 in non_drug_entities:
             rel = Relation(relation_id="R%d" % i,
-                           relation_type="Drug-" + ent2.name,
+                           relation_type=ent2.name + "-Drug",
                            arg1=ent1, arg2=ent2)
             relations.append(rel)
             i += 1
 
     if actual_relations is None:
-        return relations
+        return list(zip(relations, [None]*len(relations)))
 
     # Maps each relation type to list of actual relations
     actual_rel_dict = defaultdict(list)
