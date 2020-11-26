@@ -26,7 +26,7 @@ re_biobert_data_dir=./dataset
 re_biobert_model_name=dmis-lab/biobert-base-cased-v1.1
 re_biobert_config_name=bert-base-cased
 re_biobert_max_len=128
-re_biobert_batch_size=16
+re_biobert_batch_size=8
 re_biobert_epochs=1
 re_biobert_save_steps=4000
 re_biobert_seed=1
@@ -52,6 +52,7 @@ generate-data:
 
 # Trains BioBERT NER model
 train-biobert-ner:
+	cd biobert_ner/ && \
 	python run_ner.py \
     --data_dir ${ner_biobert_data_dir}/ \
     --labels ${ner_biobert_data_dir}/labels.txt \
@@ -69,10 +70,12 @@ train-biobert-ner:
 
 # Trains the BiLSTM NER model
 train-bilstm:
+	cd bilstm_crf_ner && \
 	python train.py
 
 # Trains BioBERT RE model
 train-biobert-re:
+	cd biobert_re/ && \
 	python run_re.py \
     --task_name ehr-re \
     --config_name ${re_biobert_config_name} \
