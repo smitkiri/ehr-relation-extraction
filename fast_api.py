@@ -35,7 +35,7 @@ def create_ehr(ner_input: NERTask):
 
     html_ehr = display_ehr(
         text=ner_input.ehr_text,
-        entities=predictions,
+        entities=predictions.get_entities(),
         return_html=True)
 
     return {'tagged_text': html_ehr}

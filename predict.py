@@ -206,6 +206,21 @@ def get_biobert_predictions(test_ehr: HealthRecord) -> List[Tuple[str, int, int]
 
 
 def get_bilstm_predictions(test_ehr: HealthRecord) -> List[Tuple[str, int, int]]:
+    """
+    Get predictions for a single EHR record using BiLSTM
+
+    Parameters
+    ----------
+    test_ehr : HealthRecord
+        The EHR record, this object should have a tokenizer set.
+
+    Returns
+    -------
+    pred_entities : List[Tuple[str, int, int]]
+        List of predicted Entities each with the format
+        ("entity", start_idx, end_idx).
+
+    """
     split_points = test_ehr.get_split_points(max_len=BILSTM_SEQ_LEN)
     examples = []
 
@@ -226,8 +241,22 @@ def get_bilstm_predictions(test_ehr: HealthRecord) -> List[Tuple[str, int, int]]
     return pred_entities
 
 
-# noinspection PyTypeChecker
-def get_ner_predictions(ehr_record: str, model_name: str = "biobert"):
+def get_ner_predictions(ehr_record: str, model_name: str = "biobert") -> HealthRecord:
+    """
+    Get predictions for NER using either BioBERT or BiLSTM
+
+    Parameters
+    --------------
+    ehr_record: str
+                An EHR record in text format
+
+    model_name: str
+                The model to use for prediction
+
+    Returns
+    -----------
+    A HealthRecord object with entities set.
+    """
     if model_name.lower() == "biobert":
         test_ehr = HealthRecord(text=ehr_record,
                                 tokenizer=biobert_tokenizer.tokenize,
@@ -251,4 +280,5 @@ def get_ner_predictions(ehr_record: str, model_name: str = "biobert"):
         ent.set_text(test_ehr.text[ent[0]:ent[1]])
         ent_preds.append(ent)
 
-    return ent_preds
+    test_ehr.entities = ent_preds
+    return test_ehr
