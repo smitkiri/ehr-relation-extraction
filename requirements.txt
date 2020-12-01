@@ -15,3 +15,5 @@ filelock==3.0.12
 pydantic==1.7.2
 allennlp==1.1.0
 scikit-learn==0.23.2
+networkx==2.5
+matplotlib==3.3.1

@@ -1,14 +1,20 @@
-from typing import List, Tuple, Callable, Dict, Union
+from typing import List, Tuple, Callable, Dict, Union, Iterable
 from annotations import Entity, Relation
+from ehr import HealthRecord
 
 import os
 import sys
 from pickle import dump, load
 from IPython.core.display import display, HTML
-from ehr import HealthRecord
 import random
 import json
 from collections import defaultdict
+import pandas as pd
+import networkx as nx
+import math
+import matplotlib.pyplot as plt
+from io import BytesIO
+import base64
 
 TPL_HTML = """<span style = "background-color: {color}; border-radius: 5px;">&nbsp;{content}&nbsp;</span>"""
 
@@ -38,7 +44,8 @@ def display_ehr(text: str,
          A list of Entity objects
 
     return_html : bool
-        Indicator for returning HTML or printing it.
+        Indicator for returning HTML or printing the tagged EHR.
+        The default is False.
 
     Returns
     -------
@@ -94,6 +101,91 @@ def display_ehr(text: str,
     else:
         # Render HTML
         display(HTML(render_text))
+
+
+def display_knowledge_graph(long_relation_df: pd.DataFrame, num_col: int = 2,
+                            height: int = 6, width: int = 6,
+                            return_html: bool = False) -> Union[None, str]:
+    """
+    Highlights EHR records with colors and displays
+    them as HTML. Ideal for working with Jupyter Notebooks
+
+    Parameters
+    ----------
+    long_relation_df: pd.DataFrame
+        Relation dataframe in long format. Should have columns named:
+        ['drug_id', 'drug', 'arg', 'edge']
+
+    num_col: int
+        Number of columns in the grid. Number of rows are automatically
+        calculated based on this. The default is 2.
+
+    height: int
+        The height of a single graph in inches. The default is 6.
+
+    width: int
+        The width of a single graph in inches. The default is 6.
+
+    return_html: bool
+        Indicator for returning the HTML img tag or displaying the plot.
+        The default is False.
+
+    Returns
+    -------
+    Union[None, str]
+        If return_html is true, returns html string
+        otherwise displays the plot.
+
+    """
+    drug_ids = sorted(list(pd.unique(long_relation_df['drug_id'])))
+    num_row = math.ceil(len(drug_ids) / num_col)
+
+    plt.subplots(num_row, num_col, figsize=(num_col * width, height * num_row))
+
+    i = 0
+    for i, d in enumerate(drug_ids):
+        sub_rel = long_relation_df[long_relation_df["drug_id"] == d]
+        labels = sub_rel.set_index(['drug', 'arg'])['edge'].to_dict()
+
+        plt.subplot(num_row, num_col, i + 1)
+
+        # Knowledge graph for a single drug
+        graph = nx.from_pandas_edgelist(sub_rel, "drug", "arg", edge_attr=True, create_using=nx.MultiDiGraph())
+
+        # Drug will always be the first in the graph
+        color_map = ['#aa9cfc'] + ['skyblue'] * (len(graph.nodes) - 1)
+
+        pos = nx.spring_layout(graph)
+
+        # Draw the graph
+        nx.draw(graph, with_labels=True, font_size=12, pos=pos,
+                node_color=color_map, node_size=2000)
+
+        # Draw edge labels
+        nx.draw_networkx_edge_labels(graph, edge_labels=labels,
+                                     pos=pos, font_color='red')
+
+    # Remove axis for empty plots, if any
+    i += 1
+    while i < num_row * num_col:
+        plt.subplot(num_row, num_col, i + 1)
+        plt.axis('off')
+        i += 1
+
+    if not return_html:
+        plt.show()
+        return
+
+    # Create an encoding for the image
+    tmp_file = BytesIO()
+
+    plt.tight_layout()
+    plt.savefig(tmp_file, format="png")
+
+    encoded = base64.b64encode(tmp_file.getvalue()).decode('utf-8')
+    img_tag = '<img src=\'data:image/png;base64,{}\'>'.format(encoded)
+
+    return img_tag
 
 
 def read_data(data_dir: str = 'data/',
@@ -343,7 +435,7 @@ def map_entities(entities: Union[Dict[str, Entity], List[Entity]],
             i += 1
 
     if actual_relations is None:
-        return list(zip(relations, [None]*len(relations)))
+        return list(zip(relations, [None] * len(relations)))
 
     # Maps each relation type to list of actual relations
     actual_rel_dict = defaultdict(list)
@@ -364,6 +456,73 @@ def map_entities(entities: Union[Dict[str, Entity], List[Entity]],
         flag = 0
 
     return list(zip(relations, relation_flags))
+
+
+def get_long_relation_table(relations: Iterable[Relation]) -> pd.DataFrame:
+    """
+    Returns the relations in a long table format with the columns
+    ['drug_id', 'drug', 'arg', 'edge'] where arg is entity related
+    to drug and edge is the entity type.
+
+    Parameters
+    ----------
+    relations : Iterable[Relation]
+        A list of relations.
+
+    Returns
+    -------
+    pd.DataFrame
+        All the relations in a long tabular format.
+
+    """
+    rel_dict = defaultdict(list)
+
+    for rel in relations:
+        if rel.arg1.name == "Drug":
+            rel_dict['drug_id'].append(rel.arg1.ann_id)
+            rel_dict['drug'].append(rel.arg1.ann_text)
+            rel_dict['arg'].append(rel.arg2.ann_text)
+
+        else:
+            rel_dict['drug_id'].append(rel.arg2.ann_id)
+            rel_dict['drug'].append(rel.arg2.ann_text)
+            rel_dict['arg'].append(rel.arg1.ann_text)
+
+        rel_dict['edge'].append(rel.name.split('-')[0])
+
+    rel_df = pd.DataFrame(rel_dict)
+    return rel_df
+
+
+def get_relation_table(relations: Union[pd.DataFrame, Iterable[Relation]],
+                       is_long_df: bool = True) -> pd.DataFrame:
+    """
+    Returns the relations in a wide table format.
+
+    Parameters
+    ----------
+    relations : Union[pd.DataFrame, Iterable[Relation]]
+        Either a list of relations, or relations table in long format.
+
+    is_long_df : bool
+        Indicator for relations parameter. True indicates the input is
+        a long dataframe. False indicates it is a list of relations.
+
+    Returns
+    -------
+    pd.DataFrame
+        All the relations in a tabular format.
+
+    """
+    if not is_long_df:
+        relations = get_long_relation_table(relations)
+
+    relation_df = relations\
+        .pivot(index=['drug_id', 'drug'], columns='edge', values='arg')\
+        .reset_index()\
+        .rename_axis(None, axis=1)
+
+    return relation_df
 
 
 def draw_progress_bar(current, total, string='', bar_len=20):
