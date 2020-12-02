@@ -2,9 +2,11 @@ import os
 from enum import Enum
 from typing import List, Optional, Union
 
-from transformers.tokenization_utils import PreTrainedTokenizer
 import logging
-from transformers.data.processors.utils import DataProcessor, InputExample, InputFeatures
+from transformers import (DataProcessor,
+                          InputExample,
+                          InputFeatures,
+                          PreTrainedTokenizer)
 
 
 logger = logging.getLogger(__name__)
@@ -27,7 +29,7 @@ def glue_convert_examples_to_features(
         max_length: Maximum example length. Defaults to the tokenizer's max_len
         task: GLUE task
         label_list: List of labels. Can be obtained from the processor using the ``processor.get_labels()`` method
-        output_mode: String indicating the output mode. Either ``regression`` or ``classification``
+        output_mode: String indicating the output mode, classification
 
     Returns:
         If the ``examples`` input is a ``tf.data.Dataset``, will return a ``tf.data.Dataset`` containing the
@@ -65,11 +67,7 @@ def _glue_convert_examples_to_features(
     def label_from_example(example: InputExample) -> Union[int, float, None]:
         if example.label is None:
             return None
-        if output_mode == "classification":
-            return label_map[example.label]
-        elif output_mode == "regression":
-            return float(example.label)
-        raise KeyError(output_mode)
+        return label_map[example.label]
 
     labels = [label_from_example(example) for example in examples]
 
@@ -97,11 +95,9 @@ def _glue_convert_examples_to_features(
 
 class OutputMode(Enum):
     classification = "classification"
-    regression = "regression"
-
 
 class EHRProcessor(DataProcessor):
-    """Processor for the SST-2 data set (GLUE version)."""
+    """Processor for EHR data."""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

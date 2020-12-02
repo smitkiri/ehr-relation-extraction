@@ -12,8 +12,10 @@ from torch.utils.data.dataset import Dataset
 from filelock import FileLock
 
 import logging
-from transformers.data.processors.utils import InputFeatures
-from transformers.tokenization_utils_base import PreTrainedTokenizerBase
+
+from transformers import (InputFeatures,
+                          InputExample,
+                          PreTrainedTokenizerBase)
 
 import pandas as pd
 from sklearn.metrics import precision_recall_fscore_support
@@ -333,3 +335,87 @@ def get_eval_results(answer_path, output_path):
     results["precision"] = p[1]
     results["specificity"] = r[0]
     return results
+
+
+
+class RETestDataset(Dataset):
+    def __init__(
+            self, test_ehr,
+            tokenizer,
+            MAX_SEQ_LEN,
+            LABEL_LIST
+            ):
+
+        self.re_text_list, self.relation_list = generate_re_test_file(test_ehr)
+
+        examples = []
+        for (i, text) in enumerate(self.re_text_list):
+            guid = "%s" % (i)
+            examples.append(InputExample(guid=guid, text_a=text, text_b=None, label=None))
+
+        self.features = glue_convert_examples_to_features(
+            examples,
+            tokenizer,
+            max_length=MAX_SEQ_LEN,
+            label_list=LABEL_LIST
+         )
+
+    def __len__(self):
+        return len(self.features)
+
+    def __getitem__(self, i) -> InputFeatures:
+        return self.features[i]
+
+
+
+def generate_re_test_file(ehr_record: HealthRecord,
+                          max_len:int = 128, sep: str = '\t'):
+
+    random.seed(0)
+
+    re_text_list = []
+    relation_list = []
+
+    text = ehr_record.text
+    entities = ehr_record.get_entities().values()
+
+    # get character split points
+    char_split_points = get_char_split_points(ehr_record, max_len)
+
+    start = 0
+    end = char_split_points[0]
+
+    for i in range(len(char_split_points)):
+        # Obtain only entities within the split text
+        range_entities = [ent for ent in filter(lambda item: int(item[0]) >= start and int(item[1]) <= end,
+                                                entities)]
+
+        # Get all possible relations within the split text
+        possible_relations = utils.map_entities(range_entities)
+
+        for rel, label in possible_relations:
+            split_text = text[start:end]
+            split_offset = start
+
+            ent1 = rel.get_entities()[0]
+            ent2 = rel.get_entities()[1]
+
+            # Check if both entities are within split text
+            if ent1[0] >= start and ent1[1] < end and \
+                    ent2[0] >= start and ent2[1] < end:
+
+                modified_text = replace_entity_text(split_text, ent1, ent2, split_offset)
+
+                # Replace un-required characters with space
+                final_text = modified_text.replace('\n', ' ').replace('\t', ' ')
+
+                re_text_list.append(final_text)
+                relation_list.append(rel)
+
+        start = end
+        if i != len(char_split_points)-1:
+            end = char_split_points[i+1]
+        else:
+            end = len(text)+1
+
+    return re_text_list, relation_list

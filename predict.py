@@ -1,5 +1,8 @@
 from transformers import (AutoModelForTokenClassification,
+                          AutoModelForSequenceClassification,
                           TrainingArguments,
+                          InputExample,
+                          InputFeatures,
                           AutoTokenizer,
                           AutoConfig,
                           Trainer)
@@ -7,6 +10,9 @@ from transformers import (AutoModelForTokenClassification,
 from biobert_ner.utils_ner import (convert_examples_to_features,
                                    InputExample,
                                    get_labels)
+
+from biobert_re.data_processor import glue_convert_examples_to_features
+from biobert_re.utils_re import RETestDataset, generate_re_test_file
 
 from bilstm_crf_ner.model.config import Config as BiLSTMConfig
 from bilstm_crf_ner.model.ner_model import NERModel as BiLSTMModel
@@ -110,7 +116,7 @@ def get_chunks(seq: List[str]) -> List[Tuple[str, int, int]]:
 
     Args:
         seq: ["O", "O", "B-DRUG", "I-DRUG", ...] sequence of labels
-        
+
     Returns:
         list of (chunk_type, chunk_start, chunk_end)
 
@@ -282,3 +288,39 @@ def get_ner_predictions(ehr_record: str, model_name: str = "biobert") -> HealthR
 
     test_ehr.entities = ent_preds
     return test_ehr
+
+
+# =====BioBERT Model for Relation Extraction======
+BIOBERT_SEQ_LEN = 128
+LABEL_LIST = ["0", "1"]
+TASK_NAME="ehr-re"
+
+biobert_re_config = AutoConfig.from_pretrained(
+    'biobert_re/output_re/config.json',
+    num_labels=len(LABEL_LIST),
+    finetuning_task=TASK_NAME)
+
+biobert_re_model = AutoModelForSequenceClassification.from_pretrained(
+    "biobert_re/output_re/pytorch_model.bin",
+    config=biobert_re_config,)
+
+biobert_re_training_args = TrainingArguments(output_dir="output",
+                                             do_predict=True)
+
+re_trainer = Trainer(model=biobert_re_model, args=biobert_re_training_args)
+
+
+def get_re_predictions(test_ehr: HealthRecord):
+
+    test_dataset = RETestDataset(test_ehr, biobert_tokenizer, BIOBERT_SEQ_LEN, LABEL_LIST)
+
+    re_predictions = re_trainer.predict(test_dataset = test_dataset).predictions
+    re_predictions = np.argmax(re_predictions, axis=1)
+
+    rel_preds = []
+    for relation, pred in zip(test_dataset.relation_list, re_predictions):
+        if pred == 1:
+            rel_preds.append(relation)
+
+    return rel_preds
+
