@@ -1,10 +1,9 @@
 import os
 import time
-import warnings
 import random
 from enum import Enum
 from dataclasses import dataclass, field
-from typing import List, Optional, Union, Dict
+from typing import List, Optional, Union, Dict, Tuple
 
 import torch
 from torch.utils.data.dataset import Dataset
@@ -29,6 +28,7 @@ from data_processor import glue_convert_examples_to_features, glue_output_modes,
 
 import utils
 from ehr import HealthRecord
+from annotations import Relation
 
 logger = logging.getLogger(__name__)
 
@@ -69,7 +69,7 @@ class Split(Enum):
 
 class REDataset(Dataset):
     """
-    This will be superseded by a framework-agnostic approach soon.
+    A class representing a training dataset for Relation Extraction.
     """
 
     args: GlueDataTrainingArguments
@@ -148,6 +148,31 @@ class REDataset(Dataset):
 
     def get_labels(self):
         return self.label_list
+
+
+class RETestDataset(Dataset):
+    """
+    A class representing a test Dataset for relation extraction.
+    """
+
+    def __init__(self, test_ehr, tokenizer, max_seq_len, label_list):
+
+        self.re_text_list, self.relation_list = generate_re_test_file(test_ehr)
+
+        examples = []
+        for (i, text) in enumerate(self.re_text_list):
+            guid = "%s" % (i)
+            examples.append(InputExample(guid=guid, text_a=text, text_b=None, label=None))
+
+        self.features = glue_convert_examples_to_features(examples, tokenizer,
+                                                          max_length=max_seq_len,
+                                                          label_list=label_list)
+
+    def __len__(self):
+        return len(self.features)
+
+    def __getitem__(self, i) -> InputFeatures:
+        return self.features[i]
 
 
 def replace_ent_label(text, ent_type, start_idx, end_idx):
@@ -337,47 +362,34 @@ def get_eval_results(answer_path, output_path):
     return results
 
 
-
-class RETestDataset(Dataset):
-    def __init__(
-            self, test_ehr,
-            tokenizer,
-            MAX_SEQ_LEN,
-            LABEL_LIST
-            ):
-
-        self.re_text_list, self.relation_list = generate_re_test_file(test_ehr)
-
-        examples = []
-        for (i, text) in enumerate(self.re_text_list):
-            guid = "%s" % (i)
-            examples.append(InputExample(guid=guid, text_a=text, text_b=None, label=None))
-
-        self.features = glue_convert_examples_to_features(
-            examples,
-            tokenizer,
-            max_length=MAX_SEQ_LEN,
-            label_list=LABEL_LIST
-         )
-
-    def __len__(self):
-        return len(self.features)
-
-    def __getitem__(self, i) -> InputFeatures:
-        return self.features[i]
-
-
-
 def generate_re_test_file(ehr_record: HealthRecord,
-                          max_len:int = 128, sep: str = '\t'):
+                          max_len: int = 128) -> Tuple[List[str], List[Relation]]:
+    """
+    Generates test file for Relation Extraction.
 
+    Parameters
+    -----------
+    ehr_record : HealthRecord
+        The EHR record with entities set.
+
+    max_len : int
+        The maximum length of sequence.
+
+    Returns
+    --------
+    Tuple[List[str], List[Relation]]
+        List of sequences with entity replaced by it's tag.
+        And a list of relation objects representing relation in those sequences.
+    """
     random.seed(0)
 
     re_text_list = []
     relation_list = []
 
     text = ehr_record.text
-    entities = ehr_record.get_entities().values()
+    entities = ehr_record.get_entities()
+    if isinstance(entities, dict):
+        entities = list(entities.values())
 
     # get character split points
     char_split_points = get_char_split_points(ehr_record, max_len)
@@ -417,5 +429,7 @@ def generate_re_test_file(ehr_record: HealthRecord,
             end = char_split_points[i+1]
         else:
             end = len(text)+1
+
+    assert len(re_text_list) == len(relation_list)
 
     return re_text_list, relation_list

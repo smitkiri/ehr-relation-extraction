@@ -1,18 +1,14 @@
 from transformers import (AutoModelForTokenClassification,
                           AutoModelForSequenceClassification,
                           TrainingArguments,
-                          InputExample,
-                          InputFeatures,
                           AutoTokenizer,
                           AutoConfig,
                           Trainer)
 
-from biobert_ner.utils_ner import (convert_examples_to_features,
-                                   InputExample,
-                                   get_labels)
+from biobert_ner.utils_ner import (convert_examples_to_features, get_labels)
+from biobert_ner.utils_ner import InputExample as NerExample
 
-from biobert_re.data_processor import glue_convert_examples_to_features
-from biobert_re.utils_re import RETestDataset, generate_re_test_file
+from biobert_re.utils_re import RETestDataset
 
 from bilstm_crf_ner.model.config import Config as BiLSTMConfig
 from bilstm_crf_ner.model.ner_model import NERModel as BiLSTMModel
@@ -23,35 +19,34 @@ import numpy as np
 from torch import nn
 from ehr import HealthRecord
 from generate_data import scispacy_plus_tokenizer
-from annotations import Entity
+from annotations import Entity, Relation
 
 from typing import List, Tuple
 
 BIOBERT_SEQ_LEN = 128
 BILSTM_SEQ_LEN = 512
 
-# =====BioBERT Model======
-biobert_labels = get_labels('biobert_ner/dataset_two_ade/labels.txt')
-biobert_label_map = {i: label for i, label in enumerate(biobert_labels)}
-num_labels = len(biobert_labels)
+# =====BioBERT Model for NER======
+biobert_ner_labels = get_labels('biobert_ner/dataset_two_ade/labels.txt')
+biobert_ner_label_map = {i: label for i, label in enumerate(biobert_ner_labels)}
+num_labels_ner = len(biobert_ner_labels)
 
-biobert_config = AutoConfig.from_pretrained(
+biobert_ner_config = AutoConfig.from_pretrained(
     'biobert_ner/output_two_ade/config.json',
-    num_labels=num_labels,
-    id2label=biobert_label_map,
-    label2id={label: i for i, label in enumerate(biobert_labels)})
+    num_labels=num_labels_ner,
+    id2label=biobert_ner_label_map,
+    label2id={label: i for i, label in enumerate(biobert_ner_labels)})
 
-biobert_tokenizer = AutoTokenizer.from_pretrained(
+biobert_ner_tokenizer = AutoTokenizer.from_pretrained(
     "dmis-lab/biobert-base-cased-v1.1")
 
-biobert_model = AutoModelForTokenClassification.from_pretrained(
+biobert_ner_model = AutoModelForTokenClassification.from_pretrained(
     "biobert_ner/output_two_ade/pytorch_model.bin",
-    config=biobert_config)
+    config=biobert_ner_config)
 
-biobert_training_args = TrainingArguments(output_dir="output",
-                                          do_predict=True)
+biobert_ner_training_args = TrainingArguments(output_dir="/tmp", do_predict=True)
 
-biobert_trainer = Trainer(model=biobert_model, args=biobert_training_args)
+biobert_ner_trainer = Trainer(model=biobert_ner_model, args=biobert_ner_training_args)
 
 label_ent_map = {'DRUG': 'Drug', 'STR': 'Strength',
                  'DUR': 'Duration', 'ROU': 'Route',
@@ -59,7 +54,7 @@ label_ent_map = {'DRUG': 'Drug', 'STR': 'Strength',
                  'DOS': 'Dosage', 'REA': 'Reason',
                  'FRE': 'Frequency'}
 
-# =====BiLSTM + CRF model=========
+# =====BiLSTM + CRF model for NER=========
 bilstm_config = BiLSTMConfig()
 bilstm_model = BiLSTMModel(bilstm_config)
 bilstm_learn = BiLSTMLearner(bilstm_config, bilstm_model)
@@ -67,6 +62,23 @@ bilstm_learn.load("ner_15e_bilstm_crf_elmo")
 
 scispacy_tok = en_ner_bc5cdr_md.load().tokenizer
 scispacy_plus_tokenizer.__defaults__ = (scispacy_tok,)
+
+# =====BioBERT Model for RE======
+re_label_list = ["0", "1"]
+re_task_name = "ehr-re"
+
+biobert_re_config = AutoConfig.from_pretrained(
+    'biobert_re/output/config.json',
+    num_labels=len(re_label_list),
+    finetuning_task=re_task_name)
+
+biobert_re_model = AutoModelForSequenceClassification.from_pretrained(
+    "biobert_re/output/pytorch_model.bin",
+    config=biobert_re_config,)
+
+biobert_re_training_args = TrainingArguments(output_dir="/tmp", do_predict=True)
+
+biobert_re_trainer = Trainer(model=biobert_re_model, args=biobert_re_training_args)
 
 
 def align_predictions(predictions: np.ndarray) -> List[List[str]]:
@@ -90,7 +102,7 @@ def align_predictions(predictions: np.ndarray) -> List[List[str]]:
 
     for i in range(1, batch_size - 1):
         for j in range(seq_len):
-            preds_list[i].append(biobert_label_map[preds[i][j]])
+            preds_list[i].append(biobert_ner_label_map[preds[i][j]])
 
     return preds_list
 
@@ -157,7 +169,7 @@ def get_chunks(seq: List[str]) -> List[Tuple[str, int, int]]:
 
 
 # noinspection PyTypeChecker
-def get_biobert_predictions(test_ehr: HealthRecord) -> List[Tuple[str, int, int]]:
+def get_biobert_ner_predictions(test_ehr: HealthRecord) -> List[Tuple[str, int, int]]:
     """
     Get predictions for a single EHR record using BioBERT
 
@@ -178,26 +190,26 @@ def get_biobert_predictions(test_ehr: HealthRecord) -> List[Tuple[str, int, int]
 
     for idx in range(len(split_points) - 1):
         words = test_ehr.tokens[split_points[idx]:split_points[idx + 1]]
-        examples.append(InputExample(guid=str(split_points[idx]),
-                                     words=words,
-                                     labels=["O"] * len(words)))
+        examples.append(NerExample(guid=str(split_points[idx]),
+                                   words=words,
+                                   labels=["O"] * len(words)))
 
     input_features = convert_examples_to_features(
         examples,
-        biobert_labels,
+        biobert_ner_labels,
         max_seq_length=BIOBERT_SEQ_LEN,
-        tokenizer=biobert_tokenizer,
+        tokenizer=biobert_ner_tokenizer,
         cls_token_at_end=False,
-        cls_token=biobert_tokenizer.cls_token,
+        cls_token=biobert_ner_tokenizer.cls_token,
         cls_token_segment_id=0,
-        sep_token=biobert_tokenizer.sep_token,
+        sep_token=biobert_ner_tokenizer.sep_token,
         sep_token_extra=False,
-        pad_on_left=bool(biobert_tokenizer.padding_side == "left"),
-        pad_token=biobert_tokenizer.pad_token_id,
-        pad_token_segment_id=biobert_tokenizer.pad_token_type_id,
+        pad_on_left=bool(biobert_ner_tokenizer.padding_side == "left"),
+        pad_token=biobert_ner_tokenizer.pad_token_id,
+        pad_token_segment_id=biobert_ner_tokenizer.pad_token_type_id,
         pad_token_label_id=nn.CrossEntropyLoss().ignore_index)
 
-    predictions, _, _ = biobert_trainer.predict(input_features)
+    predictions, _, _ = biobert_ner_trainer.predict(input_features)
     predictions = align_predictions(predictions)
 
     pred_entities = []
@@ -211,7 +223,7 @@ def get_biobert_predictions(test_ehr: HealthRecord) -> List[Tuple[str, int, int]
     return pred_entities
 
 
-def get_bilstm_predictions(test_ehr: HealthRecord) -> List[Tuple[str, int, int]]:
+def get_bilstm_ner_predictions(test_ehr: HealthRecord) -> List[Tuple[str, int, int]]:
     """
     Get predictions for a single EHR record using BiLSTM
 
@@ -247,6 +259,7 @@ def get_bilstm_predictions(test_ehr: HealthRecord) -> List[Tuple[str, int, int]]
     return pred_entities
 
 
+# noinspection PyTypeChecker
 def get_ner_predictions(ehr_record: str, model_name: str = "biobert") -> HealthRecord:
     """
     Get predictions for NER using either BioBERT or BiLSTM
@@ -265,16 +278,16 @@ def get_ner_predictions(ehr_record: str, model_name: str = "biobert") -> HealthR
     """
     if model_name.lower() == "biobert":
         test_ehr = HealthRecord(text=ehr_record,
-                                tokenizer=biobert_tokenizer.tokenize,
+                                tokenizer=biobert_ner_tokenizer.tokenize,
                                 is_training=False)
 
-        predictions = get_biobert_predictions(test_ehr)
+        predictions = get_biobert_ner_predictions(test_ehr)
 
     elif model_name.lower() == "bilstm":
         test_ehr = HealthRecord(text=ehr_record,
                                 tokenizer=scispacy_plus_tokenizer,
                                 is_training=False)
-        predictions = get_bilstm_predictions(test_ehr)
+        predictions = get_bilstm_ner_predictions(test_ehr)
 
     else:
         raise AttributeError("Accepted model names include 'biobert' "
@@ -290,31 +303,23 @@ def get_ner_predictions(ehr_record: str, model_name: str = "biobert") -> HealthR
     return test_ehr
 
 
-# =====BioBERT Model for Relation Extraction======
-BIOBERT_SEQ_LEN = 128
-LABEL_LIST = ["0", "1"]
-TASK_NAME="ehr-re"
+def get_re_predictions(test_ehr: HealthRecord) -> List[Relation]:
+    """
+    Get predictions for Relation Extraction.
 
-biobert_re_config = AutoConfig.from_pretrained(
-    'biobert_re/output_re/config.json',
-    num_labels=len(LABEL_LIST),
-    finetuning_task=TASK_NAME)
+    Parameters
+    -----------
+    test_ehr : HealthRecord
+        A HealthRecord object with entities set.
 
-biobert_re_model = AutoModelForSequenceClassification.from_pretrained(
-    "biobert_re/output_re/pytorch_model.bin",
-    config=biobert_re_config,)
+    Returns
+    --------
+    List[Relation]
+        List of relations.
+    """
+    test_dataset = RETestDataset(test_ehr, biobert_ner_tokenizer, BIOBERT_SEQ_LEN, re_label_list)
 
-biobert_re_training_args = TrainingArguments(output_dir="output",
-                                             do_predict=True)
-
-re_trainer = Trainer(model=biobert_re_model, args=biobert_re_training_args)
-
-
-def get_re_predictions(test_ehr: HealthRecord):
-
-    test_dataset = RETestDataset(test_ehr, biobert_tokenizer, BIOBERT_SEQ_LEN, LABEL_LIST)
-
-    re_predictions = re_trainer.predict(test_dataset = test_dataset).predictions
+    re_predictions = biobert_re_trainer.predict(test_dataset=test_dataset).predictions
     re_predictions = np.argmax(re_predictions, axis=1)
 
     rel_preds = []
@@ -323,4 +328,3 @@ def get_re_predictions(test_ehr: HealthRecord):
             rel_preds.append(relation)
 
     return rel_preds
-
