@@ -510,19 +510,26 @@ def get_relation_table(relations: Union[pd.DataFrame, Iterable[Relation]],
 
     Returns
     -------
-    pd.DataFrame
-        All the relations in a tabular format.
+    str
+        HTML blob of all the relations in a tabular format.
 
     """
+    relations = relations.drop_duplicates()
+
     if not is_long_df:
         relations = get_long_relation_table(relations)
 
-    relation_df = relations\
-        .pivot(index=['drug_id', 'drug'], columns='edge', values='arg')\
-        .reset_index()\
-        .rename_axis(None, axis=1)
+    relation_df = (
+        relations
+        .groupby(["drug_id", "drug", "edge"])['arg']
+        .apply(lambda x: list(x))
+        .reset_index(name='arg')
+        .set_index(["drug_id", "drug", "edge"])
+    )
 
-    return relation_df
+    relation_df['arg'] = relation_df['arg'].apply(lambda x: "\n".join(x))
+
+    return relation_df.to_html().replace("\\n", "<br>")
 
 
 def draw_progress_bar(current, total, string='', bar_len=20):
