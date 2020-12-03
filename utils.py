@@ -140,6 +140,9 @@ def display_knowledge_graph(long_relation_df: pd.DataFrame, num_col: int = 2,
     drug_ids = sorted(list(pd.unique(long_relation_df['drug_id'])))
     num_row = math.ceil(len(drug_ids) / num_col)
 
+    if num_row == 0:
+        return None
+
     plt.subplots(num_row, num_col, figsize=(num_col * width, height * num_row))
 
     i = 0
@@ -475,7 +478,7 @@ def get_long_relation_table(relations: Iterable[Relation]) -> pd.DataFrame:
         All the relations in a long tabular format.
 
     """
-    rel_dict = defaultdict(list)
+    rel_dict = {'drug_id': [], 'drug': [], 'arg': [], 'edge': []}
 
     for rel in relations:
         if rel.arg1.name == "Drug":

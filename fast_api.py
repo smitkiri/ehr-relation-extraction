@@ -1,13 +1,11 @@
 """API to generate tags for each token in a given EHR"""
 
-# To run, execute: uvicorn fast_api:app --reload
-
 from fastapi import FastAPI
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 
-from predict import get_ner_predictions
-from utils import display_ehr
+from predict import get_ner_predictions, get_re_predictions
+from utils import display_ehr, get_long_relation_table, display_knowledge_graph, get_relation_table
 
 
 class NERTask(BaseModel):
@@ -25,17 +23,30 @@ app.add_middleware(
 )
 
 
-@app.post("/ner/")
-def create_ehr(ner_input: NERTask):
+@app.post("/")
+def get_ehr_predictions(ner_input: NERTask):
     """Request EHR text data and the model choice for NER Task"""
 
-    predictions = get_ner_predictions(
+    ehr_predictions = get_ner_predictions(
         ehr_record=ner_input.ehr_text,
         model_name=ner_input.model_choice)
 
-    html_ehr = display_ehr(
+    html_ner = display_ehr(
         text=ner_input.ehr_text,
-        entities=predictions.get_entities(),
+        entities=ehr_predictions.get_entities(),
         return_html=True)
 
-    return {'tagged_text': html_ehr}
+    predicted_relations = get_re_predictions(ehr_predictions)
+    relation_table = get_long_relation_table(predicted_relations)
+
+    graph_img = display_knowledge_graph(relation_table, return_html=True)
+    
+    if len(relation_table) > 0:
+        relation_table_html = get_relation_table(relation_table)
+    else:
+        relation_table_html = relation_table.to_html()
+
+    if graph_img is None:
+        graph_img = "<p>No Relation found!</p>"
+
+    return {'tagged_text': html_ner, 're_table': relation_table_html, 'graph': graph_img}
