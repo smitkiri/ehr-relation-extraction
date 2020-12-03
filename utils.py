@@ -532,7 +532,17 @@ def get_relation_table(relations: Union[pd.DataFrame, Iterable[Relation]],
 
     relation_df['arg'] = relation_df['arg'].apply(lambda x: "\n".join(x))
 
-    return relation_df.to_html(classes=['table'], border=0).replace("\\n", "<br>")
+    empty_header = "    <tr style=\"text-align: right;\">\n      <th></th>\n      <th></th>\n      <th></th>\n      <th>arg</th>\n    </tr>\n"
+    empty_colname = "<th></th>"
+
+    relation_html = (
+        relation_df
+        .to_html(classes=['table'], border=0)
+        .replace("\\n", "<br>")
+        .replace(empty_header, "")
+        .replace(empty_colname, "<th>arg</th>")
+    )
+    return relation_html
 
 
 def draw_progress_bar(current, total, string='', bar_len=20):
