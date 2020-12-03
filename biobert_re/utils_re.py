@@ -159,14 +159,17 @@ class RETestDataset(Dataset):
 
         self.re_text_list, self.relation_list = generate_re_test_file(test_ehr)
 
-        examples = []
-        for (i, text) in enumerate(self.re_text_list):
-            guid = "%s" % (i)
-            examples.append(InputExample(guid=guid, text_a=text, text_b=None, label=None))
+        if not self.re_text_list:
+            self.features = []
+        else:
+            examples = []
+            for (i, text) in enumerate(self.re_text_list):
+                guid = "%s" % (i)
+                examples.append(InputExample(guid=guid, text_a=text, text_b=None, label=None))
 
-        self.features = glue_convert_examples_to_features(examples, tokenizer,
-                                                          max_length=max_seq_len,
-                                                          label_list=label_list)
+            self.features = glue_convert_examples_to_features(examples, tokenizer,
+                                                              max_length=max_seq_len,
+                                                              label_list=label_list)
 
     def __len__(self):
         return len(self.features)

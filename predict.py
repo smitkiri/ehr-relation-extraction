@@ -1,3 +1,4 @@
+
 from transformers import (AutoModelForTokenClassification,
                           AutoModelForSequenceClassification,
                           TrainingArguments,
@@ -20,11 +21,14 @@ from torch import nn
 from ehr import HealthRecord
 from generate_data import scispacy_plus_tokenizer
 from annotations import Entity, Relation
+import logging
 
 from typing import List, Tuple
 
-BIOBERT_SEQ_LEN = 128
-BILSTM_SEQ_LEN = 512
+BIOBERT_NER_SEQ_LEN = 128
+BILSTM_NER_SEQ_LEN = 512
+BIOBERT_RE_SEQ_LEN = 128
+logging.getLogger('matplotlib.font_manager').disabled = True
 
 # =====BioBERT Model for NER======
 biobert_ner_labels = get_labels('biobert_ner/dataset_two_ade/labels.txt')
@@ -81,7 +85,7 @@ biobert_re_training_args = TrainingArguments(output_dir="/tmp", do_predict=True)
 biobert_re_trainer = Trainer(model=biobert_re_model, args=biobert_re_training_args)
 
 
-def align_predictions(predictions: np.ndarray) -> List[List[str]]:
+def align_predictions(predictions: np.ndarray, label_ids: np.ndarray) -> List[List[str]]:
     """
     Get the list of labelled predictions from model output
 
@@ -89,6 +93,10 @@ def align_predictions(predictions: np.ndarray) -> List[List[str]]:
     ----------
     predictions : np.ndarray
         An array of shape (num_examples, seq_len, num_labels).
+
+    label_ids : np.ndarray
+        An array of shape (num_examples, seq_length).
+        Has -100 at positions which need to be ignored.
 
     Returns
     -------
@@ -100,9 +108,10 @@ def align_predictions(predictions: np.ndarray) -> List[List[str]]:
     batch_size, seq_len = preds.shape
     preds_list = [[] for _ in range(batch_size)]
 
-    for i in range(1, batch_size - 1):
+    for i in range(0, batch_size):
         for j in range(seq_len):
-            preds_list[i].append(biobert_ner_label_map[preds[i][j]])
+            if label_ids[i, j] != nn.CrossEntropyLoss().ignore_index:
+                preds_list[i].append(biobert_ner_label_map[preds[i][j]])
 
     return preds_list
 
@@ -122,12 +131,13 @@ def get_chunk_type(tok: str) -> Tuple[str, str]:
     return tag_class, tag_type
 
 
-def get_chunks(seq: List[str]) -> List[Tuple[str, int, int]]:
+def get_chunks(seq: List[str], label_ids: List[int] = None) -> List[Tuple[str, int, int]]:
     """
     Given a sequence of tags, group entities and their position
 
     Args:
         seq: ["O", "O", "B-DRUG", "I-DRUG", ...] sequence of labels
+        label_ids: [-100, 18, 18, -100, -100, 18, ....] sequence of label ids
 
     Returns:
         list of (chunk_type, chunk_start, chunk_end)
@@ -140,9 +150,14 @@ def get_chunks(seq: List[str]) -> List[Tuple[str, int, int]]:
     default = "O"
     chunks = []
     chunk_type, chunk_start = None, None
+    ignore_idx = nn.CrossEntropyLoss().ignore_index
+
     for i, tok in enumerate(seq):
+        if label_ids is not None and label_ids[i] == ignore_idx and chunk_type is not None:
+            continue
+
         # End of a chunk 1
-        if tok == default and chunk_type is not None:
+        elif tok == default and chunk_type is not None:
             # Add a chunk.
             chunk = (chunk_type, chunk_start, i - 1)
             chunks.append(chunk)
@@ -158,7 +173,7 @@ def get_chunks(seq: List[str]) -> List[Tuple[str, int, int]]:
                 chunks.append(chunk)
                 chunk_type, chunk_start = tok_chunk_type, i
         else:
-            pass
+            continue
 
     # end condition
     if chunk_type is not None:
@@ -185,7 +200,7 @@ def get_biobert_ner_predictions(test_ehr: HealthRecord) -> List[Tuple[str, int, 
         ("entity", start_idx, end_idx).
 
     """
-    split_points = test_ehr.get_split_points(max_len=BIOBERT_SEQ_LEN - 2)
+    split_points = test_ehr.get_split_points(max_len=BIOBERT_NER_SEQ_LEN - 2)
     examples = []
 
     for idx in range(len(split_points) - 1):
@@ -197,7 +212,7 @@ def get_biobert_ner_predictions(test_ehr: HealthRecord) -> List[Tuple[str, int, 
     input_features = convert_examples_to_features(
         examples,
         biobert_ner_labels,
-        max_seq_length=BIOBERT_SEQ_LEN,
+        max_seq_length=BIOBERT_NER_SEQ_LEN,
         tokenizer=biobert_ner_tokenizer,
         cls_token_at_end=False,
         cls_token=biobert_ner_tokenizer.cls_token,
@@ -209,12 +224,12 @@ def get_biobert_ner_predictions(test_ehr: HealthRecord) -> List[Tuple[str, int, 
         pad_token_segment_id=biobert_ner_tokenizer.pad_token_type_id,
         pad_token_label_id=nn.CrossEntropyLoss().ignore_index)
 
-    predictions, _, _ = biobert_ner_trainer.predict(input_features)
-    predictions = align_predictions(predictions)
+    predictions, label_ids, _ = biobert_ner_trainer.predict(input_features)
+    predictions = align_predictions(predictions, label_ids)
 
     pred_entities = []
     for idx in range(len(split_points) - 1):
-        chunk_pred = get_chunks(predictions[idx])
+        chunk_pred = get_chunks(predictions[idx], label_ids[idx])
         for ent in chunk_pred:
             pred_entities.append((ent[0],
                                   test_ehr.get_char_idx(split_points[idx] + ent[1] - 1)[0],
@@ -239,7 +254,7 @@ def get_bilstm_ner_predictions(test_ehr: HealthRecord) -> List[Tuple[str, int, i
         ("entity", start_idx, end_idx).
 
     """
-    split_points = test_ehr.get_split_points(max_len=BILSTM_SEQ_LEN)
+    split_points = test_ehr.get_split_points(max_len=BILSTM_NER_SEQ_LEN)
     examples = []
 
     for idx in range(len(split_points) - 1):
@@ -296,7 +311,12 @@ def get_ner_predictions(ehr_record: str, model_name: str = "biobert") -> HealthR
     ent_preds = []
     for i, pred in enumerate(predictions):
         ent = Entity("T%d" % i, label_ent_map[pred[0]], [pred[1], pred[2]])
-        ent.set_text(test_ehr.text[ent[0]:ent[1]])
+        ent_text = test_ehr.text[ent[0]:ent[1]]
+
+        if not any(letter.isalnum() for letter in ent_text):
+            continue
+
+        ent.set_text(ent_text)
         ent_preds.append(ent)
 
     test_ehr.entities = ent_preds
@@ -317,7 +337,11 @@ def get_re_predictions(test_ehr: HealthRecord) -> List[Relation]:
     List[Relation]
         List of relations.
     """
-    test_dataset = RETestDataset(test_ehr, biobert_ner_tokenizer, BIOBERT_SEQ_LEN, re_label_list)
+    test_dataset = RETestDataset(test_ehr, biobert_ner_tokenizer,
+                                 BIOBERT_RE_SEQ_LEN, re_label_list)
+
+    if len(test_dataset) == 0:
+        return []
 
     re_predictions = biobert_re_trainer.predict(test_dataset=test_dataset).predictions
     re_predictions = np.argmax(re_predictions, axis=1)

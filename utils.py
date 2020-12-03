@@ -143,7 +143,7 @@ def display_knowledge_graph(long_relation_df: pd.DataFrame, num_col: int = 2,
     if num_row == 0:
         return None
 
-    plt.subplots(num_row, num_col, figsize=(num_col * width, height * num_row))
+    _ = plt.subplots(num_row, num_col, figsize=(num_col * width, height * num_row))
 
     i = 0
     for i, d in enumerate(drug_ids):
@@ -186,7 +186,7 @@ def display_knowledge_graph(long_relation_df: pd.DataFrame, num_col: int = 2,
     plt.savefig(tmp_file, format="png")
 
     encoded = base64.b64encode(tmp_file.getvalue()).decode('utf-8')
-    img_tag = '<img src=\'data:image/png;base64,{}\'>'.format(encoded)
+    img_tag = '<img id="knowledge-graph" src=\'data:image/png;base64,{}\'>'.format(encoded)
 
     return img_tag
 
@@ -532,7 +532,7 @@ def get_relation_table(relations: Union[pd.DataFrame, Iterable[Relation]],
 
     relation_df['arg'] = relation_df['arg'].apply(lambda x: "\n".join(x))
 
-    return relation_df.to_html().replace("\\n", "<br>")
+    return relation_df.to_html(classes=['table'], border=0).replace("\\n", "<br>")
 
 
 def draw_progress_bar(current, total, string='', bar_len=20):

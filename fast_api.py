@@ -16,9 +16,9 @@ class NERTask(BaseModel):
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["https://smitkiri.me", "https://smitkiri.github.io", "*"],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["POST"],
     allow_headers=["*"],
 )
 
@@ -44,7 +44,7 @@ def get_ehr_predictions(ner_input: NERTask):
     if len(relation_table) > 0:
         relation_table_html = get_relation_table(relation_table)
     else:
-        relation_table_html = relation_table.to_html()
+        relation_table_html = "<p>No relations found</p>"
 
     if graph_img is None:
         graph_img = "<p>No Relation found!</p>"
