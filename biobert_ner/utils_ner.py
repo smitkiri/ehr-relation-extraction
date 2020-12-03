@@ -297,8 +297,11 @@ def convert_examples_to_features(
         tokens = []
         label_ids = []
         for word, label in zip(example.words, example.labels):
-            tokens.append(word)  
-            label_ids.append(label_map[label])
+            tokens.append(word)
+            if word.startswith("##"):
+                label_ids.append(pad_token_label_id)
+            else:
+                label_ids.append(label_map[label])
             
         # Account for [CLS] and [SEP] with "- 2" and with "- 3" for RoBERTa.
         special_tokens_count = tokenizer.num_special_tokens_to_add()
