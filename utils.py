@@ -192,7 +192,6 @@ def display_knowledge_graph(long_relation_df: pd.DataFrame, num_col: int = 2,
 
 
 def read_data(data_dir: str = 'data/',
-              train_ratio: int = 0.8,
               tokenizer: Callable[[str], List[str]] = None,
               verbose: int = 0) -> Tuple[List[HealthRecord], List[HealthRecord]]:
     """
@@ -201,10 +200,9 @@ def read_data(data_dir: str = 'data/',
     Parameters
     ----------
     data_dir : str, optional
-        Directory where the data is located. The default is 'data/'.
-
-    train_ratio : int, optional
-        Percentage split of train data. The default is 0.8.
+        Directory where the data is located.
+        It should have directories named 'train' and 'test'
+        The default is 'data/'.
 
     tokenizer : Callable[[str], List[str]], optional
         The tokenizer function to use.. The default is None.
@@ -218,49 +216,47 @@ def read_data(data_dir: str = 'data/',
         Train data, Test data.
 
     """
-    # Get all the IDs of data
-    file_ids = sorted(list(set(['.'.join(fname.split('.')[:-1]) \
-                                for fname in os.listdir(data_dir) \
-                                if not fname.startswith('.')])))
+    train_path = os.path.join(data_dir, "train")
+    test_path = os.path.join(data_dir, "test")
 
-    # Splitting IDs into random training and test data
-    random.seed(0)
-    random.shuffle(file_ids)
+    # Get all IDs for train and test data
+    train_ids = list(set(['.'.join(fname.split('.')[:-1]) \
+                          for fname in os.listdir(train_path) \
+                          if not fname.startswith('.')]))
 
-    split_idx = int(train_ratio * len(file_ids))
-    train_ids = file_ids[:split_idx]
-    test_ids = file_ids[split_idx:]
+    test_ids = list(set(['.'.join(fname.split('.')[:-1]) \
+                         for fname in os.listdir(test_path) \
+                         if not fname.startswith('.')]))
 
     if verbose == 1:
         print("Train data:")
 
     train_data = []
     for idx, fid in enumerate(train_ids):
-        record = HealthRecord(fid, text_path=data_dir + fid + '.txt',
-                              ann_path=data_dir + fid + '.ann',
+        record = HealthRecord(fid, text_path=os.path.join(train_path, fid + '.txt'),
+                              ann_path=os.path.join(train_path, fid + '.ann'),
                               tokenizer=tokenizer)
         train_data.append(record)
         if verbose == 1:
-            draw_progress_bar(idx + 1, split_idx)
+            draw_progress_bar(idx + 1, len(train_ids))
 
     if verbose == 1:
         print('\n\nTest Data:')
 
     test_data = []
     for idx, fid in enumerate(test_ids):
-        record = HealthRecord(fid, text_path=data_dir + fid + '.txt',
-                              ann_path=data_dir + fid + '.ann',
+        record = HealthRecord(fid, text_path=os.path.join(test_path, fid + '.txt'),
+                              ann_path=os.path.join(test_path, fid + '.ann'),
                               tokenizer=tokenizer)
         test_data.append(record)
         if verbose == 1:
-            draw_progress_bar(idx + 1, len(file_ids) - split_idx)
+            draw_progress_bar(idx + 1, len(test_ids))
 
     return train_data, test_data
 
 
 def read_ade_data(ade_data_dir: str = 'ade_data/',
-                  train_ratio: int = 0.8,
-                  verbose: int = 0) -> Tuple[List[Dict], List[Dict]]:
+                  verbose: int = 0) -> List[Dict]:
     """
     Reads train and test ADE data
 
@@ -270,16 +266,13 @@ def read_ade_data(ade_data_dir: str = 'ade_data/',
     ade_data_dir : str, optional
         Directory where the ADE data is located. The default is 'ade_data/'.
 
-    train_ratio : int, optional
-        Percentage split of train data. The default is 0.8.
-
     verbose : int, optional
         1 to print reading progress, 0 otherwise. The default is 0.
 
     Returns
     -------
-    Tuple[List[Dict], List[Dict]]
-        Train ADE data, Test ADE data.
+    List[Dict]
+        ADE data
 
     """
 
@@ -295,22 +288,11 @@ def read_ade_data(ade_data_dir: str = 'ade_data/',
             data = json.load(f)
             ade_data.extend(data)
 
-    random.seed(0)
-    random.shuffle(ade_data)
-
-    ade_split_idx = int(train_ratio * len(ade_data))
-
-    ade_train_data = process_ade_files(ade_data[:ade_split_idx])
+    ade_data = process_ade_files(ade_data)
     if verbose == 1:
-        print("\n\nADE Train data:")
-        print("Done.")
+        print("\n\nADE data: Done")
 
-    ade_test_data = process_ade_files(ade_data[ade_split_idx:])
-    if verbose == 1:
-        print("\nADE Test data:")
-        print("Done.")
-
-    return ade_train_data, ade_test_data
+    return ade_data
 
 
 def process_ade_files(ade_data: List[dict]) -> List[dict]:
@@ -524,10 +506,10 @@ def get_relation_table(relations: Union[pd.DataFrame, Iterable[Relation]],
 
     relation_df = (
         relations
-        .groupby(["drug_id", "drug", "edge"])['arg']
-        .apply(lambda x: list(x))
-        .reset_index(name='arg')
-        .set_index(["drug_id", "drug", "edge"])
+            .groupby(["drug_id", "drug", "edge"])['arg']
+            .apply(lambda x: list(x))
+            .reset_index(name='arg')
+            .set_index(["drug_id", "drug", "edge"])
     )
 
     relation_df['arg'] = relation_df['arg'].apply(lambda x: "\n".join(x))
@@ -537,10 +519,10 @@ def get_relation_table(relations: Union[pd.DataFrame, Iterable[Relation]],
 
     relation_html = (
         relation_df
-        .to_html(classes=['table'], border=0)
-        .replace("\\n", "<br>")
-        .replace(empty_header, "")
-        .replace(empty_colname, "<th>arg</th>")
+            .to_html(classes=['table'], border=0)
+            .replace("\\n", "<br>")
+            .replace(empty_header, "")
+            .replace(empty_colname, "<th>arg</th>")
     )
     return relation_html
 

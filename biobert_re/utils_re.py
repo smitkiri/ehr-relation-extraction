@@ -67,6 +67,7 @@ class Split(Enum):
     test = "test"
 
 
+# noinspection PyTypeChecker
 class REDataset(Dataset):
     """
     A class representing a training dataset for Relation Extraction.
@@ -164,7 +165,7 @@ class RETestDataset(Dataset):
         else:
             examples = []
             for (i, text) in enumerate(self.re_text_list):
-                guid = "%s" % (i)
+                guid = "%s" % i
                 examples.append(InputExample(guid=guid, text_a=text, text_b=None, label=None))
 
             self.features = glue_convert_examples_to_features(examples, tokenizer,
@@ -185,10 +186,10 @@ def replace_ent_label(text, ent_type, start_idx, end_idx):
 
 def write_file(file, index, sentence, label, sep, is_test, is_label):
     if is_test and is_label:  # test_original - test with labels
-        file.write('{}{}{}{}{}'.format(index, sep, sentence , sep, label))
+        file.write('{}{}{}{}{}'.format(index, sep, sentence, sep, label))
     elif is_test and not is_label:  # test - test with no labels
         file.write('{}{}{}'.format(index, sep, sentence))
-    else: # train
+    else:  # train
         file.write('{}{}{}'.format(sentence, sep, label))
     file.write('\n')
 
@@ -196,7 +197,7 @@ def write_file(file, index, sentence, label, sep, is_test, is_label):
 def get_char_split_points(record, max_len):
     char_split_points = []
 
-    split_points = record.get_split_points(max_len = max_len)
+    split_points = record.get_split_points(max_len=max_len)
     for pt in split_points[:-1]:
         char_split_points.append(record.get_char_idx(pt)[1])
 
@@ -230,7 +231,7 @@ def replace_entity_text(split_text, ent1, ent2, split_offset):
 
 
 def generate_re_input_files(ehr_records: List[HealthRecord], filename: str,
-                            ade_records: List[Dict] = None, max_len:int = 128,
+                            ade_records: List[Dict] = None, max_len: int = 128,
                             is_test=False, is_label=True, is_predict=False, sep: str = '\t'):
 
     random.seed(0)
@@ -291,7 +292,7 @@ def generate_re_input_files(ehr_records: List[HealthRecord], filename: str,
                         if is_predict:
                             index_rel_label_map.append({'relation': rel})
                         else:
-                            index_rel_label_map.append({'label':label, 'relation': rel})
+                            index_rel_label_map.append({'label': label, 'relation': rel})
 
                         index += 1
 

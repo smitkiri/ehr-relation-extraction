@@ -5,7 +5,6 @@ ade_dir=ade_corpus/
 target_dir=biobert_re/dataset/
 max_seq_len=128
 dev_split=0.1
-test_split=0.2
 tokenizer=biobert-base
 file_ext=tsv
 sep=tab
@@ -45,7 +44,6 @@ generate-data:
 	--target_dir ${target_dir} \
 	--max_seq_len ${max_seq_len} \
 	--dev_split ${dev_split} \
-	--test_split ${test_split} \
 	--tokenizer ${tokenizer} \
 	--ext ${file_ext} \
 	--sep ${sep}

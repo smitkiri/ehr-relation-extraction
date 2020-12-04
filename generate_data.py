@@ -39,10 +39,6 @@ def parse_arguments():
                         help="Ratio of dev data. Default is 0.1",
                         default=0.1)
 
-    parser.add_argument("--test_split", type=float,
-                        help="Ratio of test data. Default is 0.2",
-                        default=0.2)
-
     parser.add_argument("--tokenizer", type=str,
                         help="The tokenizer to use. 'scispacy', 'scispacy_plus', 'biobert-base', 'biobert-large', 'default'.",
                         default="scispacy")
@@ -170,20 +166,17 @@ def main():
 
     else:
         warnings.warn("Tokenizer named " + args.tokenizer + " not found."
-                                                            "Using default tokenizer instead. Acceptable values"
-                                                            "include 'scispacy', 'biobert-base', 'biobert-large',"
-                                                            "and 'default'.")
+                      "Using default tokenizer instead. Acceptable values"
+                      "include 'scispacy', 'biobert-base', 'biobert-large',"
+                      "and 'default'.")
         tokenizer = default_tokenizer
 
     print("\nReading data\n")
     train_dev, test = read_data(data_dir=args.input_dir,
-                                train_ratio=1 - args.test_split,
                                 tokenizer=tokenizer, verbose=1)
 
     if args.ade_dir is not None:
-        ade_train_dev, ade_test = read_ade_data(ade_data_dir=args.ade_dir,
-                                                train_ratio=1 - args.test_split,
-                                                verbose=1)
+        ade_train_dev = read_ade_data(ade_data_dir=args.ade_dir, verbose=1)
 
         ade_dev_split_idx = int((1 - args.dev_split) * len(ade_train_dev))
         ade_train = ade_train_dev[:ade_dev_split_idx]
@@ -192,7 +185,6 @@ def main():
     else:
         ade_train_dev = None
         ade_train = None
-        ade_test = None
         ade_devel = None
 
     print('\n')
@@ -205,7 +197,7 @@ def main():
     # Data for NER
     if args.task.lower() == 'ner':
         files = {'train': (train, ade_train), 'train_dev': (train_dev, ade_train_dev),
-                 'devel': (devel, ade_devel), 'test': (test, ade_test)}
+                 'devel': (devel, ade_devel), 'test': (test, None)}
 
         ner_generator(files, args)
 
@@ -213,7 +205,7 @@ def main():
     elif args.task.lower() == 're':
         # {dataset_name: (ehr_data, ade_data, is_test, is_label)}
         files = {'train': (train, ade_train, False, True), 'dev': (devel, ade_devel, False, True),
-                 'test': (test, ade_test, True, False), 'test_labels': (test, ade_test, True, True)}
+                 'test': (test, None, True, False), 'test_labels': (test, None, True, True)}
 
         re_generator(files, args)
 

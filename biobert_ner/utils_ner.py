@@ -1,19 +1,3 @@
-# coding=utf-8
-# Copyright 2018 The Google AI Language Team Authors and The HuggingFace Inc. team.
-# Copyright (c) 2018, NVIDIA CORPORATION.  All rights reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-""" Named entity recognition fine-tuning: utilities to work with CoNLL-2003 task. """
 import sys
 sys.path.append("../")
 
@@ -26,7 +10,10 @@ from ehr import HealthRecord
 
 from filelock import FileLock
 
-from transformers import PreTrainedTokenizer, is_tf_available, is_torch_available
+from transformers import PreTrainedTokenizer
+import torch
+from torch import nn
+from torch.utils.data.dataset import Dataset
 
 
 logger = logging.getLogger(__name__)
@@ -68,23 +55,19 @@ class Split(Enum):
     test = "test"
 
 
-if is_torch_available():
-    import torch
-    from torch import nn
-    from torch.utils.data.dataset import Dataset
+class NerDataset(Dataset):
+    """
+    This will be superseded by a framework-agnostic approach
+    soon.
+    """
 
-    class NerDataset(Dataset):
-        """
-        This will be superseded by a framework-agnostic approach
-        soon.
-        """
+    features: List[InputFeatures]
+    pad_token_label_id: int = nn.CrossEntropyLoss().ignore_index
 
-        features: List[InputFeatures]
-        pad_token_label_id: int = nn.CrossEntropyLoss().ignore_index
-        # Use cross entropy ignore_index as padding label id so that only
-        # real label ids contribute to the loss later.
+    # Use cross entropy ignore_index as padding label id so that only
+    # real label ids contribute to the loss later.
 
-        def __init__(
+    def __init__(
             self,
             data_dir: str,
             tokenizer: PreTrainedTokenizer,
@@ -93,143 +76,48 @@ if is_torch_available():
             max_seq_length: Optional[int] = None,
             overwrite_cache=False,
             mode: Split = Split.train,
-        ):
-            # Load data features from cache or dataset file
-            cached_features_file = os.path.join(
-                data_dir, "cached_{}_{}_{}".format(mode.value, tokenizer.__class__.__name__, str(max_seq_length)),
-            )
+    ):
+        # Load data features from cache or dataset file
+        cached_features_file = os.path.join(
+            data_dir, "cached_{}_{}_{}".format(mode.value, tokenizer.__class__.__name__, str(max_seq_length)),
+        )
 
-            # Make sure only the first process in distributed training processes the dataset,
-            # and the others will use the cache.
-            lock_path = cached_features_file + ".lock"
-            with FileLock(lock_path):
+        # Make sure only the first process in distributed training processes the dataset,
+        # and the others will use the cache.
+        lock_path = cached_features_file + ".lock"
+        with FileLock(lock_path):
 
-                if os.path.exists(cached_features_file) and not overwrite_cache:
-                    logger.info(f"Loading features from cached file {cached_features_file}")
-                    self.features = torch.load(cached_features_file)
-                else:
-                    logger.info(f"Creating features from dataset file at {data_dir}")
-                    examples = read_examples_from_file(data_dir, mode)
-                    # TODO clean up all this to leverage built-in features of tokenizers
-                    self.features = convert_examples_to_features(
-                        examples,
-                        labels,
-                        max_seq_length,
-                        tokenizer,
-                        cls_token_at_end=bool(model_type in ["xlnet"]),
-                        # xlnet has a cls token at the end
-                        cls_token=tokenizer.cls_token,
-                        cls_token_segment_id=2 if model_type in ["xlnet"] else 0,
-                        sep_token=tokenizer.sep_token,
-                        sep_token_extra=False,
-                        # roberta uses an extra separator b/w pairs of sentences, cf. github.com/pytorch/fairseq/commit/1684e166e3da03f5b600dbb7855cb98ddfcd0805
-                        pad_on_left=bool(tokenizer.padding_side == "left"),
-                        pad_token=tokenizer.pad_token_id,
-                        pad_token_segment_id=tokenizer.pad_token_type_id,
-                        pad_token_label_id=self.pad_token_label_id,
-                    )
-                    logger.info(f"Saving features into cached file {cached_features_file}")
-                    torch.save(self.features, cached_features_file)
-
-        def __len__(self):
-            return len(self.features)
-
-        def __getitem__(self, i) -> InputFeatures:
-            return self.features[i]
-
-
-if is_tf_available():
-    import tensorflow as tf
-
-    class TFNerDataset:
-        """
-        This will be superseded by a framework-agnostic approach
-        soon.
-        """
-
-        features: List[InputFeatures]
-        pad_token_label_id: int = -1
-        # Use cross entropy ignore_index as padding label id so that only
-        # real label ids contribute to the loss later.
-
-        def __init__(
-            self,
-            data_dir: str,
-            tokenizer: PreTrainedTokenizer,
-            labels: List[str],
-            model_type: str,
-            max_seq_length: Optional[int] = None,
-            overwrite_cache=False,
-            mode: Split = Split.train,
-        ):
-            examples = read_examples_from_file(data_dir, mode)
-            # TODO clean up all this to leverage built-in features of tokenizers
-            self.features = convert_examples_to_features(
-                examples,
-                labels,
-                max_seq_length,
-                tokenizer,
-                cls_token_at_end=bool(model_type in ["xlnet"]),
-                # xlnet has a cls token at the end
-                cls_token=tokenizer.cls_token,
-                cls_token_segment_id=2 if model_type in ["xlnet"] else 0,
-                sep_token=tokenizer.sep_token,
-                sep_token_extra=False,
-                # roberta uses an extra separator b/w pairs of sentences, cf. github.com/pytorch/fairseq/commit/1684e166e3da03f5b600dbb7855cb98ddfcd0805
-                pad_on_left=bool(tokenizer.padding_side == "left"),
-                pad_token=tokenizer.pad_token_id,
-                pad_token_segment_id=tokenizer.pad_token_type_id,
-                pad_token_label_id=self.pad_token_label_id,
-            )
-
-            def gen():
-                for ex in self.features:
-                    if ex.token_type_ids is None:
-                        yield (
-                            {"input_ids": ex.input_ids, "attention_mask": ex.attention_mask},
-                            ex.label_ids,
-                        )
-                    else:
-                        yield (
-                            {
-                                "input_ids": ex.input_ids,
-                                "attention_mask": ex.attention_mask,
-                                "token_type_ids": ex.token_type_ids,
-                            },
-                            ex.label_ids,
-                        )
-
-            if "token_type_ids" not in tokenizer.model_input_names:
-                self.dataset = tf.data.Dataset.from_generator(
-                    gen,
-                    ({"input_ids": tf.int32, "attention_mask": tf.int32}, tf.int64),
-                    (
-                        {"input_ids": tf.TensorShape([None]), "attention_mask": tf.TensorShape([None])},
-                        tf.TensorShape([None]),
-                    ),
-                )
+            if os.path.exists(cached_features_file) and not overwrite_cache:
+                logger.info(f"Loading features from cached file {cached_features_file}")
+                self.features = torch.load(cached_features_file)
             else:
-                self.dataset = tf.data.Dataset.from_generator(
-                    gen,
-                    ({"input_ids": tf.int32, "attention_mask": tf.int32, "token_type_ids": tf.int32}, tf.int64),
-                    (
-                        {
-                            "input_ids": tf.TensorShape([None]),
-                            "attention_mask": tf.TensorShape([None]),
-                            "token_type_ids": tf.TensorShape([None]),
-                        },
-                        tf.TensorShape([None]),
-                    ),
+                logger.info(f"Creating features from dataset file at {data_dir}")
+                examples = read_examples_from_file(data_dir, mode)
+                self.features = convert_examples_to_features(
+                    examples,
+                    labels,
+                    max_seq_length,
+                    tokenizer,
+                    cls_token_at_end=bool(model_type in ["xlnet"]),
+                    # xlnet has a cls token at the end
+                    cls_token=tokenizer.cls_token,
+                    cls_token_segment_id=2 if model_type in ["xlnet"] else 0,
+                    sep_token=tokenizer.sep_token,
+                    sep_token_extra=False,
+                    # roberta uses an extra separator b/w pairs of sentences, cf. github.com/pytorch/fairseq/commit/1684e166e3da03f5b600dbb7855cb98ddfcd0805
+                    pad_on_left=bool(tokenizer.padding_side == "left"),
+                    pad_token=tokenizer.pad_token_id,
+                    pad_token_segment_id=tokenizer.pad_token_type_id,
+                    pad_token_label_id=self.pad_token_label_id,
                 )
+                logger.info(f"Saving features into cached file {cached_features_file}")
+                torch.save(self.features, cached_features_file)
 
-        def get_dataset(self):
-            return self.dataset
+    def __len__(self):
+        return len(self.features)
 
-        def __len__(self):
-            return len(self.features)
-
-        def __getitem__(self, i) -> InputFeatures:
-            return self.features[i]
+    def __getitem__(self, i) -> InputFeatures:
+        return self.features[i]
 
 
 def read_examples_from_file(data_dir, mode: Union[Split, str]) -> List[InputExample]:
@@ -263,29 +151,30 @@ def read_examples_from_file(data_dir, mode: Union[Split, str]) -> List[InputExam
 
 
 def convert_examples_to_features(
-    examples: List[InputExample],
-    label_list: List[str],
-    max_seq_length: int,
-    tokenizer: PreTrainedTokenizer,
-    cls_token_at_end=False,
-    cls_token="[CLS]",
-    cls_token_segment_id=1,
-    sep_token="[SEP]",
-    sep_token_extra=False,
-    pad_on_left=False,
-    pad_token=0,
-    pad_token_segment_id=0,
-    pad_token_label_id=-100,
-    sequence_a_segment_id=0,
-    mask_padding_with_zero=True,
+        examples: List[InputExample],
+        label_list: List[str],
+        max_seq_length: int,
+        tokenizer: PreTrainedTokenizer,
+        cls_token_at_end=False,
+        cls_token="[CLS]",
+        cls_token_segment_id=1,
+        sep_token="[SEP]",
+        sep_token_extra=False,
+        pad_on_left=False,
+        pad_token=0,
+        pad_token_segment_id=0,
+        pad_token_label_id=-100,
+        sequence_a_segment_id=0,
+        mask_padding_with_zero=True,
+        verbose=1,
 ) -> List[InputFeatures]:
-    """ Loads a data file into a list of `InputFeatures`
+    """
+    Loads a data file into a list of `InputFeatures`
         `cls_token_at_end` define the location of the CLS token:
             - False (Default, BERT/XLM pattern): [CLS] + A + [SEP] + B + [SEP]
             - True (XLNet/GPT pattern): A + [SEP] + B + [SEP] + [CLS]
         `cls_token_segment_id` define the segment id associated to the CLS token (0 for BERT, 2 for XLNet)
     """
-    # TODO clean up all this to leverage built-in features of tokenizers
 
     label_map = {label: i for i, label in enumerate(label_list)}
 
@@ -302,7 +191,7 @@ def convert_examples_to_features(
                 label_ids.append(pad_token_label_id)
             else:
                 label_ids.append(label_map[label])
-            
+
         # Account for [CLS] and [SEP] with "- 2" and with "- 3" for RoBERTa.
         special_tokens_count = tokenizer.num_special_tokens_to_add()
         if len(tokens) > max_seq_length - special_tokens_count:
@@ -328,6 +217,7 @@ def convert_examples_to_features(
         # For classification tasks, the first vector (corresponding to [CLS]) is
         # used as as the "sentence vector". Note that this only makes sense because
         # the entire model is fine-tuned.
+
         tokens += [sep_token]
         label_ids += [pad_token_label_id]
         if sep_token_extra:
@@ -369,7 +259,7 @@ def convert_examples_to_features(
         assert len(segment_ids) == max_seq_length
         assert len(label_ids) == max_seq_length
 
-        if ex_index < 2:
+        if ex_index < 2 and verbose == 1:
             logger.info("*** Example ***")
             logger.info("guid: %s", example.guid)
             logger.info("tokens: %s", " ".join([str(x) for x in tokens]))
@@ -401,9 +291,9 @@ def get_labels(path: str) -> List[str]:
 
 
 def generate_input_files(ehr_records: List[HealthRecord], filename: str,
-                         ade_records: List[Dict] = None, max_len:int = 510, 
+                         ade_records: List[Dict] = None, max_len: int = 510,
                          sep: str = ' '):
-    '''
+    """
     Write EHR and ADE records to a file.
 
     Parameters
@@ -416,57 +306,56 @@ def generate_input_files(ehr_records: List[HealthRecord], filename: str,
 
     filename : str
         File name to write to.
-    
+
     max_len : int, optional
         Max length of an example. The default is 510.
-        
+
     sep : str, optional
         Token-label separator. The default is a space.
 
-    '''
+    """
     with open(filename, 'w') as f:
-      for record in ehr_records:
+        for record in ehr_records:
 
-        split_idx = record.get_split_points(max_len = max_len)
-        labels = record.get_labels()
-        tokens = record.get_tokens()
-  
-        start = split_idx[0]
-        end = split_idx[1]
-  
-        for i in range(1, len(split_idx)):
-          for (token, label) in zip(tokens[start:end+1], labels[start:end+1]):
-            f.write('{}{}{}\n'.format(token, sep, label))      
-  
-          start = end + 1
-          if i != len(split_idx)-1:
-            end = split_idx[i+1]
+            split_idx = record.get_split_points(max_len=max_len)
+            labels = record.get_labels()
+            tokens = record.get_tokens()
+
+            start = split_idx[0]
+            end = split_idx[1]
+
+            for i in range(1, len(split_idx)):
+                for (token, label) in zip(tokens[start:end + 1], labels[start:end + 1]):
+                    f.write('{}{}{}\n'.format(token, sep, label))
+
+                start = end + 1
+                if i != len(split_idx) - 1:
+                    end = split_idx[i + 1]
+                    f.write('\n')
             f.write('\n')
-        f.write('\n')
 
-      if ade_records is not None:
-        
-        for ade in ade_records:
-          ade_tokens = ade['tokens']
-          ade_entities = ade['entities']
+        if ade_records is not None:
 
-          ent_label_map = {'Drug': 'DRUG', 'Adverse-Effect': 'ADE'}
-          ade_labels = ['O'] * len(ade_tokens)
+            for ade in ade_records:
+                ade_tokens = ade['tokens']
+                ade_entities = ade['entities']
 
-          for ent in ade_entities.values():
-            ent_type = ent.name
-            start_idx = ent.range[0]
-            end_idx = ent.range[1]
-            
-            for idx in range(start_idx, end_idx+1):
-                if idx == start_idx:
-                    ade_labels[idx] = 'B-' + ent_label_map[ent_type]
-                else:
-                    ade_labels[idx] = 'I-' + ent_label_map[ent_type]
+                ent_label_map = {'Drug': 'DRUG', 'Adverse-Effect': 'ADE', 'ADE': 'ADE'}
+                ade_labels = ['O'] * len(ade_tokens)
 
-          for (token, label) in zip(ade_tokens, ade_labels):
-            f.write('{}{}{}\n'.format(token, sep, label)) 
-          f.write('\n')
+                for ent in ade_entities.values():
+                    ent_type = ent.name
+                    start_idx = ent.range[0]
+                    end_idx = ent.range[1]
+
+                    for idx in range(start_idx, end_idx + 1):
+                        if idx == start_idx:
+                            ade_labels[idx] = 'B-' + ent_label_map[ent_type]
+                        else:
+                            ade_labels[idx] = 'I-' + ent_label_map[ent_type]
+
+                for (token, label) in zip(ade_tokens, ade_labels):
+                    f.write('{}{}{}\n'.format(token, sep, label))
+                f.write('\n')
 
     print("Data successfully saved in " + filename)
-
