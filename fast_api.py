@@ -18,7 +18,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=["https://smitkiri.me", "https://smitkiri.github.io", "*"],
     allow_credentials=True,
-    allow_methods=["POST"],
+    allow_methods=["POST", "GET"],
     allow_headers=["*"],
 )
 
@@ -50,3 +50,13 @@ def get_ehr_predictions(ner_input: NERTask):
         graph_img = "<p>No Relation found!</p>"
 
     return {'tagged_text': html_ner, 're_table': relation_table_html, 'graph': graph_img}
+
+
+@app.get("/sample/")
+def get_sample_ehr():
+    """Returns a sample EHR record"""
+
+    with open("data/131903.txt") as f:
+        sample_ehr = f.read()
+
+    return {"data": sample_ehr}

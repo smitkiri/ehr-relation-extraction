@@ -56,7 +56,7 @@
 		}
 
 		.vertical-center {
-			padding: 70px 0;
+			padding: 200px 0;
 			text-align: center;
 		}
 
@@ -68,7 +68,7 @@
 		.my-custom-scrollbar {
 			position: relative;
 			width: auto;
-			height: 50%;
+			height: 400px;
 			overflow: auto;
 		}
 
@@ -173,22 +173,30 @@
 		    width: 100%;
 		  }
 		}
+
+		.custom-control {
+			padding-top: calc(.375rem + 1px); 
+			padding-bottom: calc(.375rem + 1px);
+		}
+
 	</style>
 </head>
 
 <body>
+
 	<nav class="navbar navbar-light bg-light justify-content-center fixed-top" id="navigationBar">
 		<a class="navbar-brand" href="#">
 			EHR Information Extractor
 		</a>
 	</nav>
+
 	<div class="container" role="main">
 		<div class="row">
 			<div class="col-md-6" style="border-right: 1px solid; padding-top: 20px;">
 				<form method="POST">
 
 					<div class="form-group row">
-						<label for="inputNerModel" class="col-sm-3 col-form-label">NER Model</label>
+						<label for="ner-model" class="col-sm-3 col-form-label">NER Model</label>
 						<div class="col-sm-6">
 							<select class="form-control" id="ner-model">
 								<option value="biobert">BioBERT</option>
@@ -209,7 +217,11 @@
 					</div>
 
 					<div class="form-group row">
-						<label for="ehrText" class="col-sm-5 col-form-label">Paste it here</label>
+						<label for="ehrText" class="col-sm-8 col-form-label">Paste it here</label>
+						<div class="custom-control custom-switch float-right col-sm-4">
+							<input type="checkbox" class="custom-control-input" id="sampleRecord">
+							<label class="custom-control-label" for="sampleRecord">Sample EHR</label>
+						</div>
 					</div>
 					<textarea class="form-control col-sm-11" rows="10" id="ehrText" name="ehrText"
 						spellcheck="false"></textarea>
@@ -227,7 +239,7 @@
 			</div>
 
 			<div class="col-md-6 " id="">
-				<ul class="nav nav-tabs" role="tablist">
+				<ul class="nav nav-tabs d-none" role="tablist" id="output-tabs">
 
 					<li class="nav-item">
 						<a class="nav-link active" id="ner-tab" data-toggle="tab" href="#ner"
@@ -249,22 +261,27 @@
 							<span class="align-middle">Knowledge Graph</span>
 						</a>
 					</li>
+
 				</ul>
+
 				<div class="tab-content">
 
 					<div class="tab-pane active" id="ner" aria-labelledby="ner-tab" role="tabpanel">
 						<h3 class="text-center d-none" id="nerTitle" style="padding-top: 20px; padding-bottom: 20px;">
 							Tagged EHR
 						</h3>
+
 						<div id="taggedEhr" class="d-none table-wrapper-scroll-y my-custom-scrollbar">
 						</div>
 
 						<div id="ner-waiting-text" class="vertical-center offset-sm-3">
 							Waiting for an EHR record!
 						</div>
+
 					</div>
 					
 					<div class="tab-pane" id="re-table" aria-labelledby="re-table-tab" role="tabpanel">
+
 						<div id="re-waiting-text" class="vertical-center offset-sm-3">
 							Waiting for an RE table!
 						</div>
@@ -275,6 +292,7 @@
 
 						<div id="relationTable" class="d-none table-wrapper-scroll-y my-custom-scrollbar">
 						</div>
+
 					</div>
 
 					<div class="d-none" id="graph-img">
@@ -287,11 +305,13 @@
 					</div>
 
 				</div>
+
 				<br>
 			
 			</div>
 		</div>
 	</div>
+
 	<script>
 		$(document).ready(function () {
 
@@ -304,6 +324,28 @@
 				};
 				fileReader.readAsText($(this).prop('files')[0]);
 
+			});
+
+			// Read sample EHR
+			$("#sampleRecord").change(function () {
+				// If checked
+				if (this.checked) {
+					var settings = {
+						"url": "http://127.0.0.1:8000/sample/",
+						"method": "GET",
+						"headers": {
+							"Content-Type": "application/json"
+						},
+					};
+
+					$.ajax(settings).done(function (response) {
+						let data = response.data;
+						$("#ehrText").val(data);
+					});
+
+				} else {
+					$("#ehrText").val("");
+				}
 			});
 
 			// Open Knowledge graph image
@@ -357,9 +399,13 @@
 						$("#reTitle").removeClass("d-none");
 						$("#taggedEhr").removeClass("d-none");
 						$("#relationTable").removeClass("d-none");
+						$("#output-tabs").removeClass("d-none");
 
 						$("#ner-waiting-text").addClass("d-none");
-						$("#re-waiting-text").addClass("d-none")
+						$("#re-waiting-text").addClass("d-none");
+
+						$("#knowledge-graph").attr("src", "");
+						$("#img01").attr("src", "");
 
 						$("#taggedEhr").html(taggedHtml);
 						$("#relationTable").html(reTable);
@@ -371,6 +417,7 @@
 			});
 		})
 	</script>
+	
 </body>
 
 </html>
