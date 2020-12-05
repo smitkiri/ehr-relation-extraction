@@ -18,7 +18,7 @@ import base64
 
 TPL_HTML = """<span style = "background-color: {color}; border-radius: 5px;">&nbsp;{content}&nbsp;</span>"""
 
-TPL_HTML_HOVER = """<span style = "background-color: {color}; border-radius: 5px;">&nbsp;{content}&nbsp;<span style = "background: {color}">{ent_type}</span></span>"""
+TPL_HTML_HOVER = """<span style = "background-color: {color}; border-radius: 5px;" class="{grp}">&nbsp;{content}&nbsp;<span style = "background: {color}">{ent_type}</span></span>"""
 
 COLORS = {"Drug": "#aa9cfc", "Strength": "#ff9561",
           "Form": "#7aecec", "Frequency": "#9cc9cc",
@@ -27,9 +27,43 @@ COLORS = {"Drug": "#aa9cfc", "Strength": "#ff9561",
           "Duration": "#97c4f5"}
 
 
-# noinspection PyTypeChecker
+def add_ent_group(entities: Union[Dict[str, Entity], List[Entity]],
+                  relations: Union[Dict[str, Relation], List[Relation]]) -> List[Entity]:
+    """
+    Adds relation group to Entity objects.
+
+    Parameters
+    ----------
+    entities : Union[Dict[str, Entity], List[Entity]]
+        Entities
+
+    relations : Union[Dict[str, Relation], List[Relation]])
+        Relations
+
+    Returns
+    -------
+    List[Entity]
+        List of Entities with group information added.
+    """
+
+    # Convert entities to a dictionary if not
+    if not isinstance(entities, dict):
+        ent_dict = {}
+        for ent in entities:
+            ent_dict[ent.ann_id] = ent
+        entities = ent_dict
+
+    # Add group information
+    for rel in relations:
+        entities[rel.arg1.ann_id].relation_group += "group-" + rel.ann_id + " "
+        entities[rel.arg2.ann_id].relation_group += "group-" + rel.ann_id + " "
+
+    return list(entities.values())
+
+
 def display_ehr(text: str,
                 entities: Union[Dict[str, Entity], List[Entity]],
+                relations: Union[Dict[str, Relation], List[Relation]] = None,
                 return_html: bool = False) -> Union[None, str]:
     """
     Highlights EHR records with colors and displays
@@ -43,6 +77,9 @@ def display_ehr(text: str,
     entities : Union[Dict[str, Entity], List[Entity]]
          A list of Entity objects
 
+    relations : Union[Dict[str, Relation], List[Relation]]
+        A list of relations. If provided, entities should be a dictionary.
+
     return_html : bool
         Indicator for returning HTML or printing the tagged EHR.
         The default is False.
@@ -54,6 +91,9 @@ def display_ehr(text: str,
         otherwise displays HTML.
 
     """
+    if relations is not None:
+        entities = add_ent_group(entities, relations)
+
     if isinstance(entities, dict):
         entities = list(entities.values())
 
@@ -64,8 +104,8 @@ def display_ehr(text: str,
     render_text = ""
     start_idx = 0
 
+    # Display legend
     if not return_html:
-        # Display legend
         for ent, col in COLORS.items():
             render_text += TPL_HTML.format(content=ent, color=col)
             render_text += "&nbsp" * 5
@@ -85,6 +125,7 @@ def display_ehr(text: str,
             render_text += TPL_HTML_HOVER.format(
                 content=text[ent.range[0]:ent.range[1]],
                 color=COLORS[ent.name],
+                grp=ent.relation_group,
                 ent_type=ent.name)
         else:
             render_text += TPL_HTML.format(
@@ -99,7 +140,6 @@ def display_ehr(text: str,
     if return_html:
         return render_text
     else:
-        # Render HTML
         display(HTML(render_text))
 
 

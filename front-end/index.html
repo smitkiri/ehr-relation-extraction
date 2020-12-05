@@ -415,7 +415,25 @@
 					l.stop();
 				});
 			});
-		})
+
+
+			$(document).on("mouseenter", "#taggedEhr span", function() {
+			    console.log("Hovered");
+				var relGroup = $(this).attr("class").split(' ');
+				for (grp of relGroup){
+					$("." + grp).css("border", "2px solid red");
+				}
+			});
+
+			$(document).on("mouseleave", "#taggedEhr span", function() {
+			    console.log("Remove hover");
+			    var relGroup = $(this).attr("class").split(' ');
+				for (grp of relGroup){
+					$("." + grp).css("border", "");
+					$("." + grp).css("border-bottom", "1px dotted black");
+				}
+			});
+		});
 	</script>
 	
 </body>
