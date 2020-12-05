@@ -32,10 +32,11 @@ class Entity(Annotation):
         """
         super().__init__(entity_id, entity_type)
         if char_range is None:
-            self.range = []
+            self.range = [None, None]
         else:
             self.range: List[int] = char_range
         self.ann_text: str = ""
+        self.relation_group: str = ""
 
     def set_range(self, new_range: List[int]) -> None:
         """
@@ -61,13 +62,13 @@ class Entity(Annotation):
         """
         string = "\n"
         string += "ID: " + self.ann_id + "\n"
-        string += "Entity name: " + self.name + "\n"
+        string += "Entity name: " + str(self.name) + "\n"
 
         string += "Character range: "
         string += str(self.range[0]) + " " + str(self.range[1]) + "\n"
 
         if self.ann_text:
-            string += "Entity text: '" + self.ann_text + "'"
+            string += "Entity text: '" + str(self.ann_text) + "'"
 
         return string
 
@@ -133,8 +134,8 @@ class Relation(Annotation):
         String representation of the object
         """
         string = "\n"
-        string += "ID: " + self.ann_id + "\n"
-        string += "Relation type: " + self.name + "\n"
+        string += "ID: " + str(self.ann_id) + "\n"
+        string += "Relation type: " + str(self.name) + "\n"
         string += "\nEntity 1: \n"
         string += self.arg1.__repr__() + "\n"
         string += "\nEntity 2: \n"
