@@ -27,17 +27,17 @@ app.add_middleware(
 def get_ehr_predictions(ner_input: NERTask):
     """Request EHR text data and the model choice for NER Task"""
 
-    ehr_predictions = get_ner_predictions(
+    ner_predictions = get_ner_predictions(
         ehr_record=ner_input.ehr_text,
         model_name=ner_input.model_choice)
 
-    predicted_relations = get_re_predictions(ehr_predictions)
-    relation_table = get_long_relation_table(predicted_relations)
+    re_predictions = get_re_predictions(ner_predictions)
+    relation_table = get_long_relation_table(re_predictions.relations)
 
     html_ner = display_ehr(
         text=ner_input.ehr_text,
-        entities=ehr_predictions.get_entities(),
-        relations=predicted_relations,
+        entities=ner_predictions.get_entities(),
+        relations=re_predictions.relations,
         return_html=True)
 
     graph_img = display_knowledge_graph(relation_table, return_html=True)
@@ -57,7 +57,7 @@ def get_ehr_predictions(ner_input: NERTask):
 def get_sample_ehr():
     """Returns a sample EHR record"""
 
-    with open("data/train/131903.txt") as f:
+    with open("data/test/131034.txt") as f:
         sample_ehr = f.read()
 
     return {"data": sample_ehr}
