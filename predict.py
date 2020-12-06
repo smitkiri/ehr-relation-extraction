@@ -17,10 +17,11 @@ from bilstm_crf_ner.model.ner_learner import NERLearner as BiLSTMLearner
 import en_ner_bc5cdr_md
 
 import numpy as np
+import os
 from torch import nn
 from ehr import HealthRecord
 from generate_data import scispacy_plus_tokenizer
-from annotations import Entity, Relation
+from annotations import Entity
 import logging
 
 from typing import List, Tuple
@@ -32,13 +33,16 @@ BILSTM_NER_SEQ_LEN = 512
 BIOBERT_RE_SEQ_LEN = 128
 logging.getLogger('matplotlib.font_manager').disabled = True
 
+BIOBERT_NER_MODEL_DIR = "biobert_ner/output_full"
+BIOBERT_RE_MODEL_DIR = "biobert_re/output_full"
+
 # =====BioBERT Model for NER======
 biobert_ner_labels = get_labels('biobert_ner/dataset_full/labels.txt')
 biobert_ner_label_map = {i: label for i, label in enumerate(biobert_ner_labels)}
 num_labels_ner = len(biobert_ner_labels)
 
 biobert_ner_config = AutoConfig.from_pretrained(
-    'biobert_ner/output_full/config.json',
+    os.path.join(BIOBERT_NER_MODEL_DIR, "config.json"),
     num_labels=num_labels_ner,
     id2label=biobert_ner_label_map,
     label2id={label: i for i, label in enumerate(biobert_ner_labels)})
@@ -47,7 +51,7 @@ biobert_ner_tokenizer = AutoTokenizer.from_pretrained(
     "dmis-lab/biobert-base-cased-v1.1")
 
 biobert_ner_model = AutoModelForTokenClassification.from_pretrained(
-    "biobert_ner/output_full/pytorch_model.bin",
+    os.path.join(BIOBERT_NER_MODEL_DIR, "pytorch_model.bin"),
     config=biobert_ner_config)
 
 biobert_ner_training_args = TrainingArguments(output_dir="/tmp", do_predict=True)
@@ -74,12 +78,12 @@ re_label_list = ["0", "1"]
 re_task_name = "ehr-re"
 
 biobert_re_config = AutoConfig.from_pretrained(
-    'biobert_re/output/config.json',
+    os.path.join(BIOBERT_RE_MODEL_DIR, "config.json"),
     num_labels=len(re_label_list),
     finetuning_task=re_task_name)
 
 biobert_re_model = AutoModelForSequenceClassification.from_pretrained(
-    "biobert_re/output/pytorch_model.bin",
+    os.path.join(BIOBERT_RE_MODEL_DIR, "pytorch_model.bin"),
     config=biobert_re_config,)
 
 biobert_re_training_args = TrainingArguments(output_dir="/tmp", do_predict=True)
