@@ -18,8 +18,8 @@ instance/
 .spyproject
 
 # Data files
-training_20180910.zip
 data/
+sample_ehr/
 processed_data/
 reports/
 biobert_ner/dataset*/
@@ -42,3 +42,6 @@ results/
 Scratch.ipynb
 Scrap.ipynb
 Untitled*.ipynb
+
+# Deployment files
+/.gcloudignore

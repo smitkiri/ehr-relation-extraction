@@ -16,11 +16,14 @@ class NERTask(BaseModel):
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://smitkiri.me", "https://smitkiri.github.io", "*"],
+    allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=["POST", "GET", "*"],
+    allow_methods=["*"],
     allow_headers=["*"],
 )
+
+with open("sample_ehr/131034.txt") as f:
+    SAMPLE_EHR = f.read()
 
 
 @app.post("/")
@@ -56,8 +59,4 @@ def get_ehr_predictions(ner_input: NERTask):
 @app.get("/sample/")
 def get_sample_ehr():
     """Returns a sample EHR record"""
-
-    with open("data/test/131034.txt") as f:
-        sample_ehr = f.read()
-
-    return {"data": sample_ehr}
+    return {"data": SAMPLE_EHR}
