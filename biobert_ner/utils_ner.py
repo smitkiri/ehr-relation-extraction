@@ -54,12 +54,24 @@ class Split(Enum):
     dev = "devel"
     test = "test"
 
+class NerTestDataset(Dataset):
+    """
+    Dataset for test examples
+    """
+    features: List[InputFeatures]
+    pad_token_label_id: int = nn.CrossEntropyLoss().ignore_index
+
+    def __init__(self, input_features):
+        self.features = input_features
+
+    def __len__(self):
+        return len(self.features)
+
+    def __getitem__(self, i) -> InputFeatures:
+        return self.features[i]
+
 
 class NerDataset(Dataset):
-    """
-    This will be superseded by a framework-agnostic approach
-    soon.
-    """
 
     features: List[InputFeatures]
     pad_token_label_id: int = nn.CrossEntropyLoss().ignore_index

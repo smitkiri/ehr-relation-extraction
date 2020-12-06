@@ -174,13 +174,12 @@ def main():
 
         out_label_list = [[] for _ in range(batch_size)]
         preds_list = [[] for _ in range(batch_size)]
-        
+
         for i in range(batch_size):
             for j in range(seq_len):
                 if label_ids[i, j] != nn.CrossEntropyLoss().ignore_index:
                     out_label_list[i].append(label_map[label_ids[i][j]])
                     preds_list[i].append(label_map[preds[i][j]])
-                    
         return preds_list, out_label_list
 
     def compute_metrics(p: EvalPrediction) -> Dict:
@@ -254,21 +253,28 @@ def main():
                     writer.write("%s = %s\n" % (key, value))
 
         output_test_predictions_file = os.path.join(training_args.output_dir, "test_predictions.txt")
+        prev_pred = ""
         if trainer.is_world_master():
             with open(output_test_predictions_file, "w") as writer:
                 with open(os.path.join(data_args.data_dir, "test.txt"), "r") as f:
                     example_id = 0
                     for line in f:
-                        if line.startswith("-DOCSTART-") or line == "" or line == "\n":
+                        if line.startswith("##"):
+                            if prev_pred != "O":
+                                prev_pred = "I-" + prev_pred.split('-')[-1]
+                            output_line = line.split()[0] + " " + prev_pred + "\n"
+                            writer.write(output_line)
+                        elif line.startswith("-DOCSTART-") or line == "" or line == "\n":
                             writer.write(line)
                             if not preds_list[example_id]:
                                 example_id += 1
                         elif preds_list[example_id]:
-                            output_line = line.split()[0] + " " + preds_list[example_id].pop(0) + "\n"
+                            prev_pred = preds_list[example_id].pop(0)
+                            output_line = line.split()[0] + " " + prev_pred + "\n"
                             writer.write(output_line)
                         else:
                             logger.warning(
-                                "Maximum sequence length exceeded: Example %d", example_id
+                                "Example %d, Example: %s" % (example_id, line)
                             )
             
     return results

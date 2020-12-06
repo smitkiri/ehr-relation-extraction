@@ -6,7 +6,7 @@ from transformers import (AutoModelForTokenClassification,
                           AutoConfig,
                           Trainer)
 
-from biobert_ner.utils_ner import (convert_examples_to_features, get_labels)
+from biobert_ner.utils_ner import (convert_examples_to_features, get_labels, NerTestDataset)
 from biobert_ner.utils_ner import InputExample as NerExample
 
 from biobert_re.utils_re import RETestDataset
@@ -25,18 +25,20 @@ import logging
 
 from typing import List, Tuple
 
+logger = logging.getLogger(__name__)
+
 BIOBERT_NER_SEQ_LEN = 128
 BILSTM_NER_SEQ_LEN = 512
 BIOBERT_RE_SEQ_LEN = 128
 logging.getLogger('matplotlib.font_manager').disabled = True
 
 # =====BioBERT Model for NER======
-biobert_ner_labels = get_labels('biobert_ner/dataset_two_ade/labels.txt')
+biobert_ner_labels = get_labels('biobert_ner/dataset_full/labels.txt')
 biobert_ner_label_map = {i: label for i, label in enumerate(biobert_ner_labels)}
 num_labels_ner = len(biobert_ner_labels)
 
 biobert_ner_config = AutoConfig.from_pretrained(
-    'biobert_ner/output_two_ade/config.json',
+    'biobert_ner/output_full/config.json',
     num_labels=num_labels_ner,
     id2label=biobert_ner_label_map,
     label2id={label: i for i, label in enumerate(biobert_ner_labels)})
@@ -45,7 +47,7 @@ biobert_ner_tokenizer = AutoTokenizer.from_pretrained(
     "dmis-lab/biobert-base-cased-v1.1")
 
 biobert_ner_model = AutoModelForTokenClassification.from_pretrained(
-    "biobert_ner/output_two_ade/pytorch_model.bin",
+    "biobert_ner/output_full/pytorch_model.bin",
     config=biobert_ner_config)
 
 biobert_ner_training_args = TrainingArguments(output_dir="/tmp", do_predict=True)
@@ -108,7 +110,7 @@ def align_predictions(predictions: np.ndarray, label_ids: np.ndarray) -> List[Li
     batch_size, seq_len = preds.shape
     preds_list = [[] for _ in range(batch_size)]
 
-    for i in range(0, batch_size):
+    for i in range(batch_size):
         for j in range(seq_len):
             if label_ids[i, j] != nn.CrossEntropyLoss().ignore_index:
                 preds_list[i].append(biobert_ner_label_map[preds[i][j]])
@@ -131,13 +133,12 @@ def get_chunk_type(tok: str) -> Tuple[str, str]:
     return tag_class, tag_type
 
 
-def get_chunks(seq: List[str], label_ids: List[int] = None) -> List[Tuple[str, int, int]]:
+def get_chunks(seq: List[str]) -> List[Tuple[str, int, int]]:
     """
     Given a sequence of tags, group entities and their position
 
     Args:
         seq: ["O", "O", "B-DRUG", "I-DRUG", ...] sequence of labels
-        label_ids: [-100, 18, 18, -100, -100, 18, ....] sequence of label ids
 
     Returns:
         list of (chunk_type, chunk_start, chunk_end)
@@ -150,14 +151,10 @@ def get_chunks(seq: List[str], label_ids: List[int] = None) -> List[Tuple[str, i
     default = "O"
     chunks = []
     chunk_type, chunk_start = None, None
-    ignore_idx = nn.CrossEntropyLoss().ignore_index
 
     for i, tok in enumerate(seq):
-        if label_ids is not None and label_ids[i] == ignore_idx and chunk_type is not None:
-            continue
-
         # End of a chunk 1
-        elif tok == default and chunk_type is not None:
+        if tok == default and chunk_type is not None:
             # Add a chunk.
             chunk = (chunk_type, chunk_start, i - 1)
             chunks.append(chunk)
@@ -222,18 +219,40 @@ def get_biobert_ner_predictions(test_ehr: HealthRecord) -> List[Tuple[str, int, 
         pad_on_left=bool(biobert_ner_tokenizer.padding_side == "left"),
         pad_token=biobert_ner_tokenizer.pad_token_id,
         pad_token_segment_id=biobert_ner_tokenizer.pad_token_type_id,
-        pad_token_label_id=nn.CrossEntropyLoss().ignore_index)
+        pad_token_label_id=nn.CrossEntropyLoss().ignore_index,
+        verbose=0)
 
-    predictions, label_ids, _ = biobert_ner_trainer.predict(input_features)
+    test_dataset = NerTestDataset(input_features)
+
+    predictions, label_ids, _ = biobert_ner_trainer.predict(test_dataset)
     predictions = align_predictions(predictions, label_ids)
 
+    # Flatten the prediction list
+    predictions = [p for ex in predictions for p in ex]
+
+    input_tokens = test_ehr.get_tokens()
+    prev_pred = ""
+    final_predictions = []
+    idx = 0
+
+    for token in input_tokens:
+        if token.startswith("##"):
+            if prev_pred == "O":
+                final_predictions.append(prev_pred)
+            else:
+                pred_typ = prev_pred.split("-")[-1]
+                final_predictions.append("I-" + pred_typ)
+        else:
+            prev_pred = predictions[idx]
+            final_predictions.append(prev_pred)
+            idx += 1
+
     pred_entities = []
-    for idx in range(len(split_points) - 1):
-        chunk_pred = get_chunks(predictions[idx], label_ids[idx])
-        for ent in chunk_pred:
-            pred_entities.append((ent[0],
-                                  test_ehr.get_char_idx(split_points[idx] + ent[1] - 1)[0],
-                                  test_ehr.get_char_idx(split_points[idx] + ent[2] - 1)[1]))
+    chunk_pred = get_chunks(final_predictions)
+    for ent in chunk_pred:
+        pred_entities.append((ent[0],
+                              test_ehr.get_char_idx(ent[1])[0],
+                              test_ehr.get_char_idx(ent[2])[1]))
 
     return pred_entities
 
@@ -275,24 +294,28 @@ def get_bilstm_ner_predictions(test_ehr: HealthRecord) -> List[Tuple[str, int, i
 
 
 # noinspection PyTypeChecker
-def get_ner_predictions(ehr_record: str, model_name: str = "biobert") -> HealthRecord:
+def get_ner_predictions(ehr_record: str, model_name: str = "biobert", record_id: str = "1") -> HealthRecord:
     """
     Get predictions for NER using either BioBERT or BiLSTM
 
     Parameters
     --------------
-    ehr_record: str
-                An EHR record in text format
+    ehr_record : str
+        An EHR record in text format.
 
-    model_name: str
-                The model to use for prediction
+    model_name : str
+        The model to use for prediction. Default is biobert.
+
+    record_id : str
+        The record id of the returned object. Default is 1.
 
     Returns
     -----------
     A HealthRecord object with entities set.
     """
     if model_name.lower() == "biobert":
-        test_ehr = HealthRecord(text=ehr_record,
+        test_ehr = HealthRecord(record_id=record_id,
+                                text=ehr_record,
                                 tokenizer=biobert_ner_tokenizer.tokenize,
                                 is_training=False)
 
@@ -323,7 +346,7 @@ def get_ner_predictions(ehr_record: str, model_name: str = "biobert") -> HealthR
     return test_ehr
 
 
-def get_re_predictions(test_ehr: HealthRecord) -> List[Relation]:
+def get_re_predictions(test_ehr: HealthRecord) -> HealthRecord:
     """
     Get predictions for Relation Extraction.
 
@@ -334,21 +357,26 @@ def get_re_predictions(test_ehr: HealthRecord) -> List[Relation]:
 
     Returns
     --------
-    List[Relation]
-        List of relations.
+    HealthRecord
+        The original object with relations set.
     """
     test_dataset = RETestDataset(test_ehr, biobert_ner_tokenizer,
                                  BIOBERT_RE_SEQ_LEN, re_label_list)
 
     if len(test_dataset) == 0:
-        return []
+        test_ehr.relations = []
+        return test_ehr
 
     re_predictions = biobert_re_trainer.predict(test_dataset=test_dataset).predictions
     re_predictions = np.argmax(re_predictions, axis=1)
 
+    idx = 1
     rel_preds = []
     for relation, pred in zip(test_dataset.relation_list, re_predictions):
         if pred == 1:
+            relation.ann_id = "R%d" % idx
+            idx += 1
             rel_preds.append(relation)
 
-    return rel_preds
+    test_ehr.relations = rel_preds
+    return test_ehr
