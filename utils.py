@@ -6,7 +6,6 @@ import os
 import sys
 from pickle import dump, load
 from IPython.core.display import display, HTML
-import random
 import json
 from collections import defaultdict
 import pandas as pd
@@ -15,6 +14,10 @@ import math
 import matplotlib.pyplot as plt
 from io import BytesIO
 import base64
+
+import matplotlib
+
+matplotlib.use('Agg')
 
 TPL_HTML = """<span style = "background-color: {color}; border-radius: 5px;">&nbsp;{content}&nbsp;</span>"""
 
@@ -61,6 +64,7 @@ def add_ent_group(entities: Union[Dict[str, Entity], List[Entity]],
     return list(entities.values())
 
 
+# noinspection PyTypeChecker
 def display_ehr(text: str,
                 entities: Union[Dict[str, Entity], List[Entity]],
                 relations: Union[Dict[str, Relation], List[Relation]] = None,
@@ -546,10 +550,10 @@ def get_relation_table(relations: Union[pd.DataFrame, Iterable[Relation]],
 
     relation_df = (
         relations
-            .groupby(["drug_id", "drug", "edge"])['arg']
-            .apply(lambda x: list(x))
-            .reset_index(name='arg')
-            .set_index(["drug_id", "drug", "edge"])
+        .groupby(["drug_id", "drug", "edge"])['arg']
+        .apply(lambda x: list(x))
+        .reset_index(name='arg')
+        .set_index(["drug_id", "drug", "edge"])
     )
 
     relation_df['arg'] = relation_df['arg'].apply(lambda x: "\n".join(x))
@@ -559,10 +563,10 @@ def get_relation_table(relations: Union[pd.DataFrame, Iterable[Relation]],
 
     relation_html = (
         relation_df
-            .to_html(classes=['table'], border=0)
-            .replace("\\n", "<br>")
-            .replace(empty_header, "")
-            .replace(empty_colname, "<th>arg</th>")
+        .to_html(classes=['table'], border=0)
+        .replace("\\n", "<br>")
+        .replace(empty_header, "")
+        .replace(empty_colname, "<th>arg</th>")
     )
     return relation_html
 
