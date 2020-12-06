@@ -56,7 +56,7 @@ class Config():
 
 
     # general config
-    dir_output = WORKING_DIR + "results/test/"
+    dir_output = WORKING_DIR + "output_full/"
     dir_model  = dir_output
     path_log   = dir_output + "log.txt"
 
