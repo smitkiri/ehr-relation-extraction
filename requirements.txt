@@ -17,3 +17,4 @@ allennlp==1.1.0
 scikit-learn==0.23.2
 networkx==2.5
 matplotlib==3.3.1
+seaborn==0.11.0
