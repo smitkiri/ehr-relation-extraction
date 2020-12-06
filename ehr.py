@@ -1,15 +1,7 @@
 from annotations import Entity, Relation
-from typing import List, Dict, TypedDict, Tuple, Callable, Optional
+from typing import List, Dict, Union, Tuple, Callable, Optional
 import warnings
 import numpy
-
-
-class AnnotationInfo(TypedDict):
-    """
-    Type hint for Annotations
-    """
-    entities: Dict[str, Entity]
-    relations: Dict[str, Relation]
 
 
 class HealthRecord:
@@ -431,7 +423,7 @@ class HealthRecord:
 
         return self.split_idx
 
-    def get_annotations(self) -> AnnotationInfo:
+    def get_annotations(self) -> Dict[str, Union[list, dict]]:
         """
         Get entities and relations in a dictionary.
         Entities are referenced with the key 'entities'
