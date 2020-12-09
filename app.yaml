@@ -1,0 +1,17 @@
+runtime: python
+env: flex
+runtime_config:
+  python_version: 3
+entrypoint: gunicorn -b :$PORT -w 2 -k uvicorn.workers.UvicornWorker fast_api:app --timeout 120
+
+resources:
+  memory_gb: 12
+  cpu: 2
+  disk_size_gb: 20
+
+automatic_scaling:
+  min_num_instances: 1
+  max_num_instances: 4
+
+readiness_check:
+  app_start_timeout_sec: 6000

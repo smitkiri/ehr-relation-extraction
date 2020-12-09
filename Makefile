@@ -91,6 +91,10 @@ train-biobert-re:
     --output_dir ${re_biobert_save_dir} \
     --overwrite_output_dir
 
-# Starts the FastAPI server
-start-api:
+# Starts the FastAPI server in debug mode
+start-api-local:
 	uvicorn ${fast_api_fname}:app --reload
+
+# Starts api on GCP
+start-api-gcp:
+	gunicorn -b 0.0.0.0:8000 -w 4 -k uvicorn.workers.UvicornWorker fast_api:app --timeout 120 --daemon

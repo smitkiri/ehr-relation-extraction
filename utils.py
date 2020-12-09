@@ -14,10 +14,8 @@ import math
 import matplotlib.pyplot as plt
 from io import BytesIO
 import base64
-
 import matplotlib
 
-matplotlib.use('Agg')
 
 TPL_HTML = """<span style = "background-color: {color}; border-radius: 5px;">&nbsp;{content}&nbsp;</span>"""
 
@@ -148,7 +146,7 @@ def display_ehr(text: str,
 
 
 def display_knowledge_graph(long_relation_df: pd.DataFrame, num_col: int = 2,
-                            height: int = 6, width: int = 6,
+                            height: int = 8, width: int = 8,
                             return_html: bool = False) -> Union[None, str]:
     """
     Highlights EHR records with colors and displays
@@ -181,6 +179,9 @@ def display_knowledge_graph(long_relation_df: pd.DataFrame, num_col: int = 2,
         otherwise displays the plot.
 
     """
+    if return_html:
+        matplotlib.use('Agg')
+
     drug_ids = sorted(list(pd.unique(long_relation_df['drug_id'])))
     num_row = math.ceil(len(drug_ids) / num_col)
 
@@ -548,17 +549,20 @@ def get_relation_table(relations: Union[pd.DataFrame, Iterable[Relation]],
     if not is_long_df:
         relations = get_long_relation_table(relations)
 
+    relations = relations.rename(columns={"drug_id": "Drug ID", "drug": "Drug",
+                                          "edge": "Entity Type", "arg": "Entity Text"})
+
     relation_df = (
         relations
-        .groupby(["drug_id", "drug", "edge"])['arg']
+        .groupby(["Drug ID", "Drug", "Entity Type"])["Entity Text"]
         .apply(lambda x: list(x))
-        .reset_index(name='arg')
-        .set_index(["drug_id", "drug", "edge"])
+        .reset_index(name="Entity Text")
+        .set_index(["Drug ID", "Drug", "Entity Type"])
     )
 
-    relation_df['arg'] = relation_df['arg'].apply(lambda x: "\n".join(x))
+    relation_df["Entity Text"] = relation_df["Entity Text"].apply(lambda x: "\n".join(x))
 
-    empty_header = "    <tr style=\"text-align: right;\">\n      <th></th>\n      <th></th>\n      <th></th>\n      <th>arg</th>\n    </tr>\n"
+    empty_header = "    <tr style=\"text-align: right;\">\n      <th></th>\n      <th></th>\n      <th></th>\n      <th>Entity Text</th>\n    </tr>\n"
     empty_colname = "<th></th>"
 
     relation_html = (
@@ -566,7 +570,7 @@ def get_relation_table(relations: Union[pd.DataFrame, Iterable[Relation]],
         .to_html(classes=['table'], border=0)
         .replace("\\n", "<br>")
         .replace(empty_header, "")
-        .replace(empty_colname, "<th>arg</th>")
+        .replace(empty_colname, "<th>Entity Text</th>")
     )
     return relation_html
 

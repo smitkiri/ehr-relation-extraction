@@ -245,14 +245,14 @@
 						<a class="nav-link active" id="ner-tab" data-toggle="tab" href="#ner"
 							aria-controls="ner" role="tab" aria-selected="true">
 							<i class="bx bx-user align-middle"></i>
-							<span class="align-middle">NER</span>
+							<span class="align-middle">Tagged EHR</span>
 						</a>
 					</li>
 					<li class="nav-item current">
 						<a class="nav-link" id="re-table-tab" data-toggle="tab" href="#re-table" aria-controls="re-table"
 							role="tab" aria-selected="false">
 							<i class="bx bx-message-square align-middle"></i>
-							<span class="align-middle">RE Table</span>
+							<span class="align-middle">Relation Table</span>
 						</a>
 					</li>
 					<li class="nav-item">
@@ -331,7 +331,7 @@
 				// If checked
 				if (this.checked) {
 					var settings = {
-						"url": "https://ehr-relation-extraction.ue.r.appspot.com/sample/",
+						"url": "http://34.105.27.31:8000/sample/",
 						"method": "GET",
 						"headers": {
 							"Content-Type": "application/json"
@@ -371,7 +371,7 @@
 				l.start();
 
 				var settings = {
-					"url": "https://ehr-relation-extraction.ue.r.appspot.com/",
+					"url": "http://34.105.27.31:8000/",
 					"method": "POST",
 					"headers": {
 						"Content-Type": "application/json"
