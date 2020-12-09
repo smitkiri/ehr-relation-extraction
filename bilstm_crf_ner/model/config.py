@@ -65,9 +65,9 @@ class Config():
     dim_char = 100
 
     # glove files
-    filename_glove = WORKING_DIR + "data/glove.6B/glove.6B.{}d.txt".format(dim_word)
+    filename_glove = WORKING_DIR + "dataset/glove.6B/glove.6B.{}d.txt".format(dim_word)
     # trimmed embeddings (created from glove_filename with build_data.py)
-    filename_trimmed = WORKING_DIR + "data/glove.6B.{}d.trimmed.npz".format(dim_word)
+    filename_trimmed = WORKING_DIR + "dataset/glove.6B.{}d.trimmed.npz".format(dim_word)
     use_pretrained = True
 
     # dataset
@@ -77,17 +77,17 @@ class Config():
 
     #filename_dev = filename_test = filename_train = "data/test.txt" # test
 
-    filename_dev = WORKING_DIR + "data/devel.txt"
-    filename_test = WORKING_DIR + "data/test.txt"
-    filename_train = WORKING_DIR + "data/train.txt"
+    filename_dev = WORKING_DIR + "dataset/devel.txt"
+    filename_test = WORKING_DIR + "dataset/test.txt"
+    filename_train = WORKING_DIR + "dataset/train.txt"
 
     max_iter = None # if not None, max number of examples in Dataset
 
     # vocab (created from dataset with build_data.py)
-    filename_words = WORKING_DIR + "data/words.txt"
-    filename_tags = WORKING_DIR + "data/tags.txt"
-    filename_chars = WORKING_DIR + "data/chars.txt"
-    filename_test_preds = WORKING_DIR + "data/test_preds.txt"
+    filename_words = WORKING_DIR + "dataset/words.txt"
+    filename_tags = WORKING_DIR + "dataset/tags.txt"
+    filename_chars = WORKING_DIR + "dataset/chars.txt"
+    filename_test_preds = WORKING_DIR + "dataset/test_preds.txt"
 
     # training
     train_embeddings = False

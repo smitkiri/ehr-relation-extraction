@@ -25,7 +25,7 @@ reports/
 biobert_ner/dataset*/
 biobert_ner/output*/
 bilstm-crf_ner/results/
-bilstm_crf_ner/data/
+dataset/
 biobert_re/dataset/
 biobert_re/output/
 biobert_re/runs/
