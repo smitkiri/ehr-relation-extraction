@@ -34,6 +34,7 @@ ade_corpus/
 test_data/
 runs/
 results/
+notebooks/
 
 # IntelliJ files
 /annotating-ehr.iml
