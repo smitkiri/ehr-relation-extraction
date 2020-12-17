@@ -29,30 +29,43 @@ Edit the Makefile for any parameter changes that you want. All parameters are de
 - Train BioBERT for RE: `make train-biobert-re`
 - Run API in development mode with debugging: `make start-api-local`
 - Run API in production mode: `make start-api-gcp`
+- Run the front-end: Edit the IP address for AJAX call in `front-end/ehr.html` and open the HTML file in a browser.
 
 ### Using direct commands from terminal
-To generate the preprocessed data required for model input
-```
-python generate_data.py \
-    --task ner \
-	--input_dir data/ \
-	--ade_dir ade_corpus/ \
-	--target_dir dataset/ \
-	--max_seq_len 512 \
-	--dev_split 0.1 \
-	--tokenizer biobert-base \
-	--ext txt \
-	--sep " " \
-```
+- To generate the preprocessed data required for model input
+    ```
+    python generate_data.py \
+        --task ner \
+        --input_dir data/ \
+        --ade_dir ade_corpus/ \
+        --target_dir dataset/ \
+        --max_seq_len 512 \
+        --dev_split 0.1 \
+        --tokenizer biobert-base \
+        --ext txt \
+        --sep " " \
+    ```
+    
+    - The `task` parameter can be either `ner` or `re` for Named Entity Recognition and Relation Extraction tasks respectively. 
+    - The input directory should have two folders named `train` and `test` in them. Each folder should have `txt` and `ann` files from the original dataset.
+    - `ade_dir` is an optional parameter. It should contain json files from the ADE Corpus dataset.
+    - The `max_seq_len` should not exceed `512` for BioBERT models.
+    - For BioBERT models, use `biobert-base` as the `tokenizer` value and for BiLSTM + CRF model, use `scispacy_plus`.
+    - Use `txt` for the `ext` (extension) parameter and `" "` as the `sep` (seperator) parameter for NER, and `tsv` extension and `tab` as the seperator for RE.
 
-- The `task` parameter can be either `ner` or `re` for Named Entity Recognition and Relation Extraction tasks respectively. 
-- The input directory should have two folders named `train` and `test` in them. Each folder should have `txt` and `ann` files from the original dataset.
-- `ade_dir` is an optional parameter. It should contain json files from the ADE Corpus dataset.
-- The `max_seq_len` should not exceed `512` for BioBERT models.
-- For BioBERT models, use `biobert-base` as the `tokenizer` value and for BiLSTM + CRF model, use `scispacy_plus`.
-- Use `txt` for the `ext` (extension) parameter and `" "` as the `sep` (seperator) parameter for NER, and `tsv` extension and `tab` as the seperator for RE.
+- Instructions for running individual models can be found in their respective directories.
 
-Instructions for running individual models can be found in their respective directories.
+- To run the API in development mode with debugging on, run the following command:
+    ```
+    uvicorn fast_api:app --reload
+    ```
+
+- To run the API in production mode with gunicorn, run the following command:
+    ```
+    gunicorn -b 0.0.0.0:8000 -w 4 -k uvicorn.workers.UvicornWorker fast_api:app --timeout 120
+    ```
+
+- To run the front-end, edit the IP address for AJAX call in `front-end/ehr.html` and open the HTML file in a browser.
 
 # Introduction
 An Electronic Health Record (EHR) [[1]](https://www.cms.gov/Medicare/E-Health/EHealthRecords) is an electronic version of a patient's medical history that includes extremely important information including, but not limited to, problems, medication, progress notes, immunizations and laboratory reports. EHRs are huge free-text data files that are documented by healthcare professionals, like clinical notes, discharge summaries or lab reports. Finding information from this data is time consuming, since the data is unstructured and there may be multiple such records for a single patient. Natural Language Processing (NLP) techniques could be used to make this data structured, and quickly find information whenever needed, thereby saving healthcare professionals' time from these mundane tasks.
@@ -121,7 +134,7 @@ Unlike NER where it was used for token classification, BioBERT uses the concept 
 Even for the purpose of RE, the BioBERT model seemed to have performed extremely well. With an overall F1 score of `0.942`, the model was short of just `0.021` when compared to the challenge winners' score which was of 0.963.
 
 <p align="center">
-    <img src="https://raw.githubusercontent.com/smitkiri/ehr-relation-extraction/master/plots/re_micro_f1_challenge.jpg" width="25%" height="25%">
+    <img src="https://raw.githubusercontent.com/smitkiri/ehr-relation-extraction/master/plots/re_micro_f1_challenge.jpg" width="40%" height="40%">
 </p>
 
 In addition to this, the model managed to achieve high F1 scores for each type of relation as well. The highest being that of Form-Drug with a score of 0.99, followed by Strength-Drug and Dosage-Drug, each with a score of 0.98. It is interesting to see that the scores for both the Reason-Drug and ADE-Drug relations are similar with 0.82 and 0.83, respectively. This also suggests that adding the external ADE corpus seemed to have improved the F1 scores for the ADE-Drug relation (though conclusive proof was not obtained as the model was not trained without the ADE corpus). Also, based on these results, it can be said that the model is doing a decent job of differentiating between the above two relations which is a crucial part of this project.

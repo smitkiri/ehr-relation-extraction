@@ -35,6 +35,7 @@ test_data/
 runs/
 results/
 notebooks/
+predicted_annotations/
 
 # IntelliJ files
 /annotating-ehr.iml

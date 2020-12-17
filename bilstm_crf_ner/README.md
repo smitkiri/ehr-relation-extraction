@@ -2,8 +2,8 @@
 Before running anything, make sure you have generated the pre-processed dataset using the generate_data.py file with the command mentioned in the parent directory. 
 
 ## Additional Requirements
-1.	Packages: Anaconda, Pytorch, AllenNLP (if on linux and using elmo)  
-2.	Glove 300B embeddings (If not using Elmo) 
+1.	Packages: Anaconda, Pytorch, AllenNLP  
+2.	Glove 300B embeddings
 
 ## Training
 1. Change settings in model/config.py  
@@ -14,18 +14,16 @@ Before running anything, make sure you have generated the pre-processed dataset 
 4. Run train.py  
 
 ## Results
-#### Augmented with ADE Corpus Sample
-|              |precision|    recall|  f1-score|   support|
-|:---:|:---:|:---:|:---:|:---:|
-|         ADE |      0.85 |     0.78 |     0.81  |    2219|
-|         Dosage |      0.93 |     0.83 |     0.88  |     869|
-|        Drug |      0.90 |     0.88 |     0.89  |    5037|
-|         Duration |      0.77 |     0.57 |     0.65  |     130|
-|         Form |      0.95 |     0.90 |     0.93  |    1384|
-|         Frequency |      0.83 |     0.81 |     0.82  |    1220|
-|         Reason |      0.70 |     0.26 |     0.38  |     743|
-|         Route |      0.96 |     0.87 |     0.91  |    1079|
-|         Strength |      0.92 |     0.92 |     0.92  |    1267|
-|   micro avg |      0.89 |     0.82 |     0.86  |   13948|
-|   macro avg |      0.87 |     0.76 |     0.80  |   13948|
-|weighted avg |      0.89 |     0.82 |     0.85  |   13948|
+|              |precision|    recall|  f1-score|
+|:---:|:---:|:---:|:---:|
+|         ADE |      0.1807 |     0.7168 |     0.2887  |
+|         Dosage |      0.9272 |     0.9123 |     0.9197  |
+|        Drug |      0.8898 |     0.9287|     0.9088  |
+|         Duration |      0.8882 |     0.7778 |     0.8293  |
+|         Form |      0.9840 |     0.9172 |     0.9494  |
+|         Frequency |      0.9412 |     0.9494 |     0.9453  |
+|         Reason |      0.7883 |     0.5238 |     0.6294  |
+|         Route |      0.9583 |     0.9226 |     0.9401  |
+|         Strength |      0.9769 |     0.9683 |     0.9726  |
+|   micro avg |      0.8708 |     0.8957 |     0.8831  |
+|   macro avg |      0.8624 |     0.8792 |     0.8684  |

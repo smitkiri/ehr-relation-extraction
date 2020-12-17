@@ -1,5 +1,5 @@
 # BioBERT for NER
-To train an NER model with BioBERT-v1.1 (base), run the command below or alternatively run the file named run_biobert_ner.sh
+To train an NER model with BioBERT-v1.1 (base), run the command below.
 <br>
 Before running this, make sure you have generated the pre-processed dataset using the generate_data.py file with the command mentioned in the parent directory. 
 
@@ -32,38 +32,18 @@ python run_ner.py \
     --do_predict \
     --overwrite_output_dir
 ```
-The script is saved in ```run_biobert_ner.sh```, so if no changes are needed, just run ```sh run_biobert_ner.sh```
 
 ## Results
-#### Augmented with ADE Corpus Sample
-|             | precision |   recall | f1-score |  support|
-|:---:|:---:|:---:|:---:|:---:|
-|         ADE |      0.86 |     0.88|      0.87|      2222|
-|       Dosage |      0.86  |    0.91  |    0.89   |    873|
-|        Drug |      0.92  |    0.94  |    0.93   |   5113|
-|         Duration |      0.72  |    0.77  |    0.74   |    130|
-|         Form |      0.94  |    0.92  |    0.93   |   1385|
-|         Frequency |      0.87  |    0.89  |    0.88   |   1227|
-|         Reason |      0.59  |    0.62  |    0.61   |    759|
-|         Route |      0.91  |    0.95  |    0.93   |   1082|
-|         Strength |      0.95  |    0.96  |    0.95   |   1273|
-|   micro avg |      0.88  |    0.90  |    0.89   |  14064|
-|   macro avg |      0.85  |    0.87  |    0.86   |  14064|
-|weighted avg |      0.89  |    0.90  |    0.89   |  14064|
-
-#### Without ADE Corpus
-|            |  precision |   recall | f1-score|   support|
-|:---:|:---:|:---:|:---:|:---:|
-|         ADE |      0.33 |     0.36 |     0.34  |     182|
-|         Dosage |     0.87  |    0.92  |    0.90   |    873|
-|        Drug |      0.90 |     0.93 |     0.91  |    3318|
-|         Duration |      0.71 |     0.77 |     0.74  |     130|
-|         For, |      0.94 |     0.92 |     0.93  |    1385|
-|         Frequency |      0.86 |     0.89 |     0.88  |    1227|
-|         Reason |      0.57 |     0.62 |     0.59  |     759|
-|         Route |      0.92 |     0.94 |     0.93  |    1082|
-|         Strength |      0.95 |     0.95 |     0.95  |    1273|
-|   micro avg |      0.87 |     0.89 |     0.88  |   10229|
-|   macro avg |      0.78 |     0.81 |     0.80  |   10229|
-|weighted avg |      0.87 |     0.89 |     0.88  |   10229|
-
+|             | precision |   recall | f1-score |
+|:---:|:---:|:---:|:---:|
+|         ADE |      0.6351 |     0.5680|      0.5997|
+|       Dosage |      0.9254  |    0.9485  |    0.9368   |
+|        Drug |      0.9580  |    0.9542  |    0.9561   |
+|         Duration |      0.8119  |    0.9021  |    0.8546   |
+|         Form |      0.9546  |    0.9456  |    0.9501   |
+|         Frequency |      0.9707  |    0.9668  |    0.9688   |
+|         Reason |      0.7203  |    0.7348  |    0.7275   |
+|         Route |      0.9530  |    0.9525  |    0.9527   |
+|         Strength |      0.9807  |    0.9846  |    0.9827   |
+|   micro avg |      0.9327  |    0.9330  |    0.9328   |
+|   macro avg |      0.9253  |    0.9225  |    0.9230   |
