@@ -22,7 +22,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-with open("sample_ehr/131034.txt") as f:
+with open("sample_ehr/104788.txt") as f:
     SAMPLE_EHR = f.read()
 
 

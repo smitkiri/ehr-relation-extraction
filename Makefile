@@ -97,4 +97,4 @@ start-api-local:
 
 # Starts api on GCP
 start-api-gcp:
-	gunicorn -b 0.0.0.0:8000 -w 4 -k uvicorn.workers.UvicornWorker fast_api:app --timeout 120 --daemon
+	gunicorn -b 0.0.0.0:8000 -w 4 -k uvicorn.workers.UvicornWorker fast_api:app --timeout 300 --daemon
