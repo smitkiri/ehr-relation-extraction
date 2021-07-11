@@ -56,7 +56,7 @@ class HealthRecord:
             self.text = text
 
         self.char_to_token_map: List[int] = []
-        self.token_to_char_map: List[int] = []
+        self.token_to_char_map: List[Tuple[int, int]] = []
         self.tokenizer = None
         self.elmo = None
         self.set_tokenizer(tokenizer)
@@ -289,7 +289,7 @@ class HealthRecord:
 
         return token_idx
 
-    def get_char_idx(self, token_idx: int) -> int:
+    def get_char_idx(self, token_idx: int) -> Tuple[int, int]:
         """
         Returns the index for the first character of the specified
         token index.
