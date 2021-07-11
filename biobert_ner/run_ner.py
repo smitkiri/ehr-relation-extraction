@@ -1,4 +1,5 @@
 import logging
+import json
 import os
 import sys
 
@@ -240,6 +241,11 @@ def main():
 
         predictions, label_ids, metrics = trainer.predict(test_dataset)
         logger.info("Predictions shape: " + str(predictions.shape))
+
+        # Save label map
+        label_map_file = os.path.join(training_args.output_dir, "label_map.json")
+        with open(label_map_file, "w") as f:
+            json.dump(label_map, f)
 
         preds_list, _ = align_predictions(predictions, label_ids)
         
