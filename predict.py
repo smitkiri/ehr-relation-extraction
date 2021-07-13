@@ -33,8 +33,8 @@ BILSTM_NER_SEQ_LEN = 512
 BIOBERT_RE_SEQ_LEN = 128
 logging.getLogger('matplotlib.font_manager').disabled = True
 
-BIOBERT_NER_MODEL_DIR = "biobert_ner/output_full"
-BIOBERT_RE_MODEL_DIR = "biobert_re/output_full"
+BIOBERT_NER_MODEL_DIR = "biobert_ner/biobert_large_ner_finetuned_full"
+BIOBERT_RE_MODEL_DIR = "biobert_re/biobert_large_re_finetuned_full"
 
 # =====BioBERT Model for NER======
 biobert_ner_labels = get_labels('biobert_ner/dataset_full/labels.txt')
@@ -93,7 +93,8 @@ biobert_re_trainer = Trainer(model=biobert_re_model, args=biobert_re_training_ar
 
 def align_predictions(predictions: np.ndarray, label_ids: np.ndarray) -> List[List[str]]:
     """
-    Get the list of labelled predictions from model output
+    Get the list of labelled predictions from model output.
+    Converts raw model outputs to IOB format labels
 
     Parameters
     ----------
@@ -201,15 +202,19 @@ def get_biobert_ner_predictions(test_ehr: HealthRecord) -> List[Tuple[str, int, 
         ("entity", start_idx, end_idx).
 
     """
+    # Get the indices at which the input has to be split
+    # (due to the model not being able to handle large texts)
     split_points = test_ehr.get_split_points(max_len=BIOBERT_NER_SEQ_LEN - 2)
     examples = []
 
+    # Create multiple input examples based on the splitting indices
     for idx in range(len(split_points) - 1):
         words = test_ehr.tokens[split_points[idx]:split_points[idx + 1]]
         examples.append(NerExample(guid=str(split_points[idx]),
                                    words=words,
                                    labels=["O"] * len(words)))
 
+    # Create input features for the model
     input_features = convert_examples_to_features(
         examples,
         biobert_ner_labels,
@@ -226,8 +231,10 @@ def get_biobert_ner_predictions(test_ehr: HealthRecord) -> List[Tuple[str, int, 
         pad_token_label_id=nn.CrossEntropyLoss().ignore_index,
         verbose=0)
 
+    # Create a Dataset object for input to transformers Trainer module for prediction
     test_dataset = NerTestDataset(input_features)
 
+    # Generate model predictions and convert them into IOB labels for each token
     predictions, label_ids, _ = biobert_ner_trainer.predict(test_dataset)
     predictions = align_predictions(predictions, label_ids)
 
@@ -241,6 +248,8 @@ def get_biobert_ner_predictions(test_ehr: HealthRecord) -> List[Tuple[str, int, 
 
     for token in input_tokens:
         if token.startswith("##"):
+            # Consider the prediction of the first token of the word as the prediction of all sub-tokens
+            # of the word if the word is divided into multiple tokens
             if prev_pred == "O":
                 final_predictions.append(prev_pred)
             else:
@@ -252,7 +261,11 @@ def get_biobert_ner_predictions(test_ehr: HealthRecord) -> List[Tuple[str, int, 
             idx += 1
 
     pred_entities = []
+
+    # Get token index ranges for each label from the IOB labels of individual tokens
     chunk_pred = get_chunks(final_predictions)
+
+    # Convert the token indices to character indices
     for ent in chunk_pred:
         pred_entities.append((ent[0],
                               test_ehr.get_char_idx(ent[1])[0],
@@ -277,15 +290,20 @@ def get_bilstm_ner_predictions(test_ehr: HealthRecord) -> List[Tuple[str, int, i
         ("entity", start_idx, end_idx).
 
     """
+    # Get the indices at which the input text has to be split
+    # (due to the model not being able to handle large texts)
     split_points = test_ehr.get_split_points(max_len=BILSTM_NER_SEQ_LEN)
     examples = []
 
+    # Create multiple input examples from the splitting indices
     for idx in range(len(split_points) - 1):
         words = test_ehr.tokens[split_points[idx]:split_points[idx + 1]]
         examples.append(words)
 
+    # Get IOB tags for every token
     predictions = bilstm_learn.predict(examples)
 
+    # Convert the IOB tags to token index ranges and subsequently to character index ranges
     pred_entities = []
     for idx in range(len(split_points) - 1):
         chunk_pred = get_chunks(predictions[idx])
@@ -335,6 +353,7 @@ def get_ner_predictions(ehr_record: str, model_name: str = "biobert", record_id:
         raise AttributeError("Accepted model names include 'biobert' "
                              "and 'bilstm'.")
 
+    # Convert the entity predictions to Entity objects
     ent_preds = []
     for i, pred in enumerate(predictions):
         ent = Entity("T%d" % i, label_ent_map[pred[0]], [pred[1], pred[2]])
@@ -364,6 +383,7 @@ def get_re_predictions(test_ehr: HealthRecord) -> HealthRecord:
     HealthRecord
         The original object with relations set.
     """
+    # Create a Dataset object from the test examples for transformers Trainer prediction
     test_dataset = RETestDataset(test_ehr, biobert_ner_tokenizer,
                                  BIOBERT_RE_SEQ_LEN, re_label_list)
 
@@ -371,9 +391,11 @@ def get_re_predictions(test_ehr: HealthRecord) -> HealthRecord:
         test_ehr.relations = []
         return test_ehr
 
+    # Get the binary predictions to indicate if the relations exist
     re_predictions = biobert_re_trainer.predict(test_dataset=test_dataset).predictions
     re_predictions = np.argmax(re_predictions, axis=1)
 
+    # Add the relations where the model predicted 1 to the relation list of the HealthRecord object
     idx = 1
     rel_preds = []
     for relation, pred in zip(test_dataset.relation_list, re_predictions):
