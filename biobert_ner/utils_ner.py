@@ -189,7 +189,8 @@ def convert_examples_to_features(
         `cls_token_segment_id` define the segment id associated to the CLS token (0 for BERT, 2 for XLNet)
     """
     if isinstance(label_list, dict):
-        label_map = label_list
+        inv_label_map = label_list
+        label_map = {label: int(i) for i, label in inv_label_map.items()}
     else:
         label_map = {label: i for i, label in enumerate(label_list)}
 
