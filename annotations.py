@@ -1,4 +1,5 @@
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Dict, Union
+import json
 
 
 class Annotation:
@@ -97,6 +98,75 @@ class Entity(Annotation):
         else:
             return False
 
+    def to_json(self, output_string: bool = True) -> Union[str, dict]:
+        """
+        Converts the object to a json format
+
+        Parameters
+        ----------
+        output_string : bool
+            Flag to indicate if the output should be a string.
+            If False, the output will be a dictionary.
+
+        Returns
+        -------
+        Union[str, dict]
+            The representation of the object in json format
+        """
+        class_dict = {
+            "ent_id": self.ann_id,
+            "ent_name": self.name,
+            "char_range": self.range,
+            "text": self.ann_text,
+            "rel_group": self.relation_group
+        }
+
+        if output_string:
+            return json.dumps(class_dict)
+        else:
+            return class_dict
+
+    @classmethod
+    def from_json(cls, data_dict: Union[str, dict]):
+        """
+        Creates a class object from a dictionary object
+
+        Parameters
+        ----------
+        data_dict : Union[str, dict]
+            A dictionary with the following mandatory fields: ent_id, ent_name, char_range
+            Optional fields: text, rel_group
+
+        Returns
+        -------
+        Entity object
+        """
+        if isinstance(data_dict, str):
+            data_dict = json.loads(data_dict)
+
+        try:
+            if isinstance(data_dict["char_range"], str):
+                data_dict["char_range"] = eval(data_dict["char_range"])
+
+            obj = cls(
+                entity_id=data_dict["ent_id"],
+                entity_type=data_dict["ent_name"],
+                char_range=data_dict["char_range"]
+            )
+
+        except KeyError as key:
+            msg = f"Could not find the key {key}. The dictionary should contain the following keys: "\
+                  "ent_id, ent_name, char_range"
+            raise KeyError(msg)
+
+        if "text" in data_dict:
+            obj.ann_text = data_dict["text"]
+
+        if "rel_group" in data_dict:
+            obj.relation_group = data_dict["rel_group"]
+
+        return obj
+
 
 class Relation(Annotation):
     """
@@ -158,3 +228,70 @@ class Relation(Annotation):
 
         else:
             return False
+
+    def to_json(self, output_string: bool = True) -> Union[str, dict]:
+        """
+        Converts the object to a json format
+
+        Parameters
+        ----------
+        output_string : bool
+            Flag to indicate if the output should be a string.
+            If False, the output will be a dictionary.
+
+        Returns
+        -------
+        Union[str, dict]
+            The representation of the object in json format
+        """
+        class_dict = {
+            "rel_id": self.ann_id,
+            "rel_name": self.name,
+            "arg1": self.arg1.to_json(output_string=False),
+            "arg2": self.arg2.to_json(output_string=False)
+        }
+
+        if output_string:
+            return json.dumps(class_dict)
+        else:
+            return class_dict
+
+    @classmethod
+    def from_json(cls, data_dict: Union[str, dict]):
+        """
+        Create a Relation object from a dictionary.
+
+        Parameters
+        ----------
+        data_dict : Union[str, dict]
+            A dictionary with the following keys: rel_id, rel_name, arg1, arg2
+            The arg1 and arg2 keys can contain either Entity objects or a dictionary
+            which can be converted to an Entity object
+
+        Returns
+        -------
+        A Relation object
+        """
+        if isinstance(data_dict, str):
+            data_dict = json.loads(data_dict)
+
+        try:
+            if isinstance(data_dict["arg1"], dict):
+                data_dict["arg1"] = Entity.from_json(data_dict["arg1"])
+
+            if isinstance(data_dict["arg2"], dict):
+                data_dict["arg2"] = Entity.from_json(data_dict["arg2"])
+
+            obj = cls(
+                relation_id=data_dict["rel_id"],
+                relation_type=data_dict["rel_name"],
+                arg1=data_dict["arg1"],
+                arg2=data_dict["arg2"]
+            )
+
+        except KeyError as key:
+            msg = f"Could not find the key {key}. The dictionary should contain the following keys: "\
+                  "rel_id, rel_name, arg1, arg2"
+            raise KeyError(msg)
+
+        return obj

@@ -2,6 +2,7 @@ from annotations import Entity, Relation
 from typing import List, Dict, Union, Tuple, Callable, Optional
 import warnings
 import numpy
+import json
 
 
 class HealthRecord:
@@ -59,16 +60,17 @@ class HealthRecord:
         self.token_to_char_map: List[Tuple[int, int]] = []
         self.tokenizer = None
         self.elmo = None
+        self.elmo_embeddings = None
         self.set_tokenizer(tokenizer)
-        self.split_idx = None
+        self.split_idx: Union[int, None] = None
 
         if ann_path is not None:
             annotations = self._extract_annotations(ann_path)
             self.entities, self.relations = annotations
 
         else:
-            self.entities = None
-            self.relations = None
+            self.entities: Union[Dict[str, Entity], List[Entity], None] = None
+            self.relations: Union[Dict[str, Relation], List[Relation], None] = None
 
     @staticmethod
     def _read_ehr(path: str) -> str:
@@ -502,3 +504,91 @@ class HealthRecord:
             raise AttributeError("Elmo embeddings not set")
 
         return self.elmo_embeddings
+
+    def to_json(self, output_string: bool = True) -> Union[str, dict]:
+        """
+        Converts the object to a json-writable dictionary format
+
+        Parameters
+        ----------
+        output_string : bool
+            Flag to indicate if the output should be a string.
+            If False, the output will be a dictionary.
+
+        Returns
+        -------
+        Union[str, dict]
+            The representation of the object in json format
+        """
+        class_dict = {
+            "record_id": self.record_id,
+            "is_training": str(self.is_training),
+            "text": self.text,
+            "char_to_token_map": str(self.char_to_token_map),
+            "token_to_char_map": str(self.token_to_char_map),
+            "elmo_embeddings": str(self.elmo_embeddings),
+            "tokens": str(self.tokens) if hasattr(self, "tokens") else "None",
+            "split_idx": str(self.split_idx),
+            "entities": [ent.to_json(output_string=False) for ent in self.entities] if self.entities is not None else "None",
+            "relations": [rel.to_json(output_string=False) for rel in self.relations] if self.relations is not None else "None"
+        }
+
+        if output_string:
+            return json.dumps(class_dict)
+        else:
+            return class_dict
+
+    @classmethod
+    def from_json(cls, data_dict: Union[str, dict]):
+        """
+        Creates a HealthRecord object from a dictionary
+
+        Parameters
+        -----------
+        data_dict : Union[str, dict]
+
+        """
+        if isinstance(data_dict, str):
+            data_dict = json.loads(data_dict)
+
+        # If the values are in string format, pass it through eval() for these keys in the data_dict
+        keys_to_eval = ("is_training", "char_to_token_map", "token_to_char_map",
+                        "elmo_embeddings", "tokens", "split_idx", "entities", "relations")
+
+        for key in keys_to_eval:
+            if isinstance(data_dict[key], str):
+                data_dict[key] = eval(data_dict[key])
+
+        obj = cls(
+            record_id=data_dict["record_id"],
+            text=data_dict["text"],
+            is_training=data_dict["is_training"]
+        )
+
+        # Set other attributes of the object
+        obj.token_to_char_map = data_dict["token_to_char_map"]
+        obj.char_to_token_map = data_dict["char_to_token_map"]
+        obj.elmo_embeddings = data_dict["elmo_embeddings"]
+        obj.tokens = data_dict["tokens"]
+        obj.split_idx = data_dict["split_idx"]
+
+        # Set the entities and relations
+        if data_dict["entities"] is not None:
+            if isinstance(data_dict["entities"], dict):
+                obj.entities = {key: Entity.from_json(val) for key, val in data_dict["entities"].items()}
+
+            elif isinstance(data_dict["entities"], list):
+                obj.entities = [Entity.from_json(ent) for ent in data_dict["entities"]]
+
+        if data_dict["relations"] is not None:
+            if isinstance(data_dict["relations"], dict):
+                obj.relations = {key: Relation.from_json(val) for key, val in data_dict["relations"].items()}
+
+            elif isinstance(data_dict["relations"], list):
+                obj.relations = [Relation.from_json(rel) for rel in data_dict["relations"]]
+
+        warning_msg = "The tokenizer has not been set but the tokens have been set in the HealthRecord object. "\
+                      "Setting the tokenizer using set_tokenizer() method will cause the tokens to be overwritten."
+
+        warnings.warn(warning_msg)
+        return obj
