@@ -522,15 +522,15 @@ class HealthRecord:
         """
         class_dict = {
             "record_id": self.record_id,
-            "is_training": str(self.is_training),
+            "is_training": self.is_training,
             "text": self.text,
-            "char_to_token_map": str(self.char_to_token_map),
-            "token_to_char_map": str(self.token_to_char_map),
-            "elmo_embeddings": str(self.elmo_embeddings),
-            "tokens": str(self.tokens) if hasattr(self, "tokens") else "None",
-            "split_idx": str(self.split_idx),
-            "entities": [ent.to_json(output_string=False) for ent in self.entities] if self.entities is not None else "None",
-            "relations": [rel.to_json(output_string=False) for rel in self.relations] if self.relations is not None else "None"
+            "char_to_token_map": self.char_to_token_map,
+            "token_to_char_map": self.token_to_char_map,
+            "elmo_embeddings": self.elmo_embeddings,
+            "tokens": self.tokens if hasattr(self, "tokens") else None,
+            "split_idx": self.split_idx,
+            "entities": None if self.entities is None else [ent.to_json(output_string=False) for ent in self.entities],
+            "relations": None if self.relations is None else [rel.to_json(output_string=False) for rel in self.relations],
         }
 
         if output_string:
