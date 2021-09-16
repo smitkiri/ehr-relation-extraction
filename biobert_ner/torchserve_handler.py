@@ -7,11 +7,11 @@ from utils_ner import convert_examples_to_features, NerTestDataset, InputExample
 from ehr import HealthRecord
 from annotations import Entity
 
-from typing import List, Tuple
+from typing import List, Tuple, Dict, Sequence, Union
 import numpy as np
 
 from torch import nn
-from transformers import AutoTokenizer, AutoModelForTokenClassification, Trainer, TrainingArguments
+from transformers import AutoTokenizer, AutoModelForTokenClassification, Trainer, TrainingArguments, PreTrainedTokenizer
 
 from ts.torch_handler.base_handler import BaseHandler
 
@@ -68,7 +68,7 @@ def get_chunk_type(tok: str) -> Tuple[str, str]:
     return tag_class, tag_type
 
 
-def get_chunks(seq: List[str]) -> List[Tuple[str, int, int]]:
+def get_chunks(seq: Sequence[str]) -> List[Tuple[str, int, int]]:
     """
     Given a sequence of tags, group entities and their position
 
@@ -124,6 +124,12 @@ class NERHandler(BaseHandler, ABC):
         super(NERHandler, self).__init__()
         self.initialized = False
 
+        self.tokenizer: Union[PreTrainedTokenizer, None] = None
+        self.label_map: Union[Dict[int, str], None] = None
+        self.training_args: Union[TrainingArguments, None] = None
+        self.trainer: Union[Trainer, None] = None
+        self.label_ent_map: Union[Dict[str, str], None] = None
+
     def initialize(self, context):
         self.manifest = context.manifest
 
@@ -140,11 +146,14 @@ class NERHandler(BaseHandler, ABC):
         with open(mapping_file_path) as f:
             self.label_map = json.load(f)
 
+        # Convert the string key to integers since the label mapping maps the integer model outputs to labels
         self.label_map = {int(k): v for k, v in self.label_map.items()}
 
+        # Create a transformers Trainer object for inference
         self.training_args = TrainingArguments(output_dir="/tmp", do_predict=True)
         self.trainer = Trainer(model=self.model, args=self.training_args)
 
+        # Map the model entity labels to longer labels
         self.label_ent_map = {"DRUG": "Drug", "STR": "Strength",
                               "DUR": "Duration", "ROU": "Route",
                               "FOR": "Form", "ADE": "ADE",
@@ -153,7 +162,7 @@ class NERHandler(BaseHandler, ABC):
 
         self.initialized = True
 
-    def preprocess(self, data):
+    def preprocess(self, data) -> Tuple[NerTestDataset, HealthRecord]:
         text = data[0].get("data")
         if text is None:
             text = data[0].get("body")
