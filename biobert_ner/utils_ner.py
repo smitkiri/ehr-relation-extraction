@@ -165,7 +165,7 @@ def read_examples_from_file(data_dir, mode: Union[Split, str]) -> List[InputExam
 
 def convert_examples_to_features(
         examples: List[InputExample],
-        label_list: Union[List[str], Dict[str, int]],
+        label_list: Union[List[str], Dict[int, str]],
         max_seq_length: int,
         tokenizer: PreTrainedTokenizer,
         cls_token_at_end=False,
