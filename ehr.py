@@ -556,6 +556,9 @@ class HealthRecord:
                         "elmo_embeddings", "tokens", "split_idx", "entities", "relations")
 
         for key in keys_to_eval:
+            if key not in data_dict:
+                data_dict[key] = None
+
             if isinstance(data_dict[key], str):
                 data_dict[key] = eval(data_dict[key])
 
