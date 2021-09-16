@@ -98,3 +98,29 @@ start-api-local:
 # Starts api on GCP
 start-api-gcp:
 	gunicorn -b 0.0.0.0:8000 -w 4 -k uvicorn.workers.UvicornWorker fast_api:app --timeout 300 --daemon
+
+
+# Create a mar file for BioBERT NER
+create-biobert-ner-mar:
+	 torch-model-archiver \
+ 		--model-name biobert_ner_v1.0 \
+	 	--version 1.0 \
+	 	--serialized-file ./biobert_ner/output_full/pytorch_model.bin \
+	 	--extra-files "biobert_ner/output_full/config.json,biobert_ner/output_full/label_map.json,biobert_ner/output_full/special_tokens_map.json,biobert_ner/output_full/tokenizer_config.json,biobert_ner/output_full/training_args.bin,biobert_ner/output_full/vocab.txt,ehr.py,annotations.py,biobert_ner/utils_ner.py" \
+	 	--handler biobert_ner/torchserve_handler.py && \
+	 	mv biobert_ner_v1.0.mar model_store
+
+
+# Create a mar file for BioBERT NER
+create-biobert-re-mar:
+	 torch-model-archiver \
+ 		--model-name biobert_re_v1.0 \
+	 	--version 1.0 \
+	 	--serialized-file ./biobert_re/output_full/pytorch_model.bin \
+	 	--extra-files "biobert_re/output_full/config.json,biobert_re/output_full/special_tokens_map.json,biobert_re/output_full/tokenizer_config.json,biobert_re/output_full/training_args.bin,biobert_re/output_full/vocab.txt,ehr.py,annotations.py,biobert_re/utils_re.py,biobert_re/data_processor.py,utils.py" \
+	 	--handler biobert_re/torchserve_handler.py && \
+	 	mv biobert_re_v1.0.mar model_store
+
+# Start torchserve api
+start-api-torchserve:
+	torchserve --start --ncs --model-store model_store --models all
