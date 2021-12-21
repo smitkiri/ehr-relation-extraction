@@ -6,6 +6,7 @@ from biobert_re.utils_re import generate_re_input_files
 from typing import List, Iterator, Dict
 import warnings
 import os
+import re
 
 labels = ['B-DRUG', 'I-DRUG', 'B-STR', 'I-STR', 'B-DUR', 'I-DUR',
           'B-ROU', 'I-ROU', 'B-FOR', 'I-FOR', 'B-ADE', 'I-ADE',
@@ -56,10 +57,12 @@ def parse_arguments():
 
 
 def default_tokenizer(sequence: str) -> List[str]:
-    """A tokenizer that splits sequence by a space."""
-    words = sequence.split(' ')
+    """A tokenizer that splits sequence by a whitespace."""
+    words = re.split("\n| |\t", sequence)
     tokens = []
     for word in words:
+        word = word.strip()
+
         if not word:
             continue
 
