@@ -238,6 +238,7 @@ def display_knowledge_graph(long_relation_df: pd.DataFrame, num_col: int = 2,
 
 def read_data(data_dir: str = 'data/',
               tokenizer: Callable[[str], List[str]] = None,
+              is_bert_tokenizer: bool = True,
               verbose: int = 0) -> Tuple[List[HealthRecord], List[HealthRecord]]:
     """
     Reads train and test data
@@ -251,6 +252,9 @@ def read_data(data_dir: str = 'data/',
 
     tokenizer : Callable[[str], List[str]], optional
         The tokenizer function to use.. The default is None.
+
+    is_bert_tokenizer : bool
+        If the tokenizer is a BERT-based WordPiece tokenizer
 
     verbose : int, optional
         1 to print reading progress, 0 otherwise. The default is 0.
@@ -280,7 +284,8 @@ def read_data(data_dir: str = 'data/',
     for idx, fid in enumerate(train_ids):
         record = HealthRecord(fid, text_path=os.path.join(train_path, fid + '.txt'),
                               ann_path=os.path.join(train_path, fid + '.ann'),
-                              tokenizer=tokenizer)
+                              tokenizer=tokenizer,
+                              is_bert_tokenizer=is_bert_tokenizer)
         train_data.append(record)
         if verbose == 1:
             draw_progress_bar(idx + 1, len(train_ids))
@@ -292,7 +297,8 @@ def read_data(data_dir: str = 'data/',
     for idx, fid in enumerate(test_ids):
         record = HealthRecord(fid, text_path=os.path.join(test_path, fid + '.txt'),
                               ann_path=os.path.join(test_path, fid + '.ann'),
-                              tokenizer=tokenizer)
+                              tokenizer=tokenizer,
+                              is_bert_tokenizer=is_bert_tokenizer)
         test_data.append(record)
         if verbose == 1:
             draw_progress_bar(idx + 1, len(test_ids))

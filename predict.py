@@ -321,6 +321,7 @@ def get_ner_predictions(ehr_record: str, model_name: str = "biobert", record_id:
         test_ehr = HealthRecord(record_id=record_id,
                                 text=ehr_record,
                                 tokenizer=biobert_ner_tokenizer.tokenize,
+                                is_bert_tokenizer=True,
                                 is_training=False)
 
         predictions = get_biobert_ner_predictions(test_ehr)
@@ -328,6 +329,7 @@ def get_ner_predictions(ehr_record: str, model_name: str = "biobert", record_id:
     elif model_name.lower() == "bilstm":
         test_ehr = HealthRecord(text=ehr_record,
                                 tokenizer=scispacy_plus_tokenizer,
+                                is_bert_tokenizer=False,
                                 is_training=False)
         predictions = get_bilstm_ner_predictions(test_ehr)
 
