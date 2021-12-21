@@ -3,11 +3,10 @@ import argparse
 from utils import read_data, save_pickle, read_ade_data
 from biobert_ner.utils_ner import generate_input_files
 from biobert_re.utils_re import generate_re_input_files
-from custom_tokenizers import default_tokenizer, scispacy_plus_tokenizer
-
-from typing import Dict
+from typing import List, Iterator, Dict
 import warnings
 import os
+import re
 
 labels = ['B-DRUG', 'I-DRUG', 'B-STR', 'I-STR', 'B-DUR', 'I-DUR',
           'B-ROU', 'I-ROU', 'B-FOR', 'I-FOR', 'B-ADE', 'I-ADE',
@@ -55,6 +54,36 @@ def parse_arguments():
 
     arguments = parser.parse_args()
     return arguments
+
+
+def default_tokenizer(sequence: str) -> List[str]:
+    """A tokenizer that splits sequence by a whitespace."""
+    words = re.split("\n| |\t", sequence)
+    tokens = []
+    for word in words:
+        word = word.strip()
+
+        if not word:
+            continue
+
+        tokens.append(word)
+
+    return tokens
+
+
+def scispacy_plus_tokenizer(sequence: str, scispacy_tok=None) -> Iterator[str]:
+    """
+    Runs the scispacy tokenizer and removes all tokens with
+    just whitespace characters
+    """
+    if scispacy_tok is None:
+        import en_ner_bc5cdr_md
+        scispacy_tok = en_ner_bc5cdr_md.load().tokenizer
+
+    scispacy_tokens = list(map(lambda x: str(x), scispacy_tok(sequence)))
+    tokens = filter(lambda t: not (' ' in t or '\n' in t or '\t' in t), scispacy_tokens)
+
+    return tokens
 
 
 def ner_generator(files: Dict[str, tuple], args) -> None:
