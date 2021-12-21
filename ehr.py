@@ -13,6 +13,7 @@ class HealthRecord:
                  ann_path: Optional[str] = None,
                  text: Optional[str] = None,
                  tokenizer: Callable[[str], List[str]] = None,
+                 is_bert_tokenizer: bool = True,
                  is_training: bool = True) -> None:
         """
         Initializes a health record object
@@ -34,6 +35,10 @@ class HealthRecord:
 
         tokenizer: Callable[[str], List[str]], optional
             The tokenizer function to use. The default is None.
+
+        is_bert_tokenizer: bool
+            If the tokenizer is a BERT-based wordpiece tokenizer.
+            The default is False.
 
         is_training : bool, optional
             Specifies if the record is a training example.
@@ -58,6 +63,7 @@ class HealthRecord:
         self.char_to_token_map: List[int] = []
         self.token_to_char_map: List[int] = []
         self.tokenizer = None
+        self.is_bert_tokenizer = is_bert_tokenizer
         self.elmo = None
         self.set_tokenizer(tokenizer)
         self.split_idx = None
@@ -176,7 +182,8 @@ class HealthRecord:
 
             else:
                 # If the annotation is not a relation or entity, warn user
-                warnings.warn("Invalid annotation encountered: " + str(line))
+                msg = f"Invalid annotation encountered: {line}, File: {path}"
+                warnings.warn(msg)
 
         for r in relation_backlog:
             rel = Relation(relation_id=r[0], relation_type=r[1],
@@ -201,7 +208,7 @@ class HealthRecord:
 
         for i in range(len(self.tokens)):
             # For BioBERT, a split within a word is denoted by ##
-            if self.tokens[i].startswith("##"):
+            if self.is_bert_tokenizer and self.tokens[i].startswith("##"):
                 k += 2
 
             # Characters that are discarded from tokenization
@@ -223,7 +230,8 @@ class HealthRecord:
                     j += 1
                     k += 1
                 else:
-                    raise Exception("Error computing token to char map.")
+                    msg = f"Error computing token to char map. ID: {self.record_id}"
+                    raise Exception(msg)
 
             token_end_idx = j
             token_to_char_map.append((token_start_idx, token_end_idx))
