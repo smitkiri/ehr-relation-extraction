@@ -136,10 +136,12 @@ def main():
 
     if args.tokenizer == "default":
         tokenizer = default_tokenizer
+        is_bert_tokenizer = False
 
     elif args.tokenizer == "scispacy":
         import en_ner_bc5cdr_md
         tokenizer = en_ner_bc5cdr_md.load().tokenizer
+        is_bert_tokenizer = False
 
     elif args.tokenizer == 'scispacy_plus':
         import en_ner_bc5cdr_md
@@ -147,6 +149,7 @@ def main():
         scispacy_plus_tokenizer.__defaults__ = (scispacy_tok,)
 
         tokenizer = scispacy_plus_tokenizer
+        is_bert_tokenizer = False
 
     elif args.tokenizer == 'biobert-large':
         from transformers import AutoTokenizer
@@ -155,6 +158,7 @@ def main():
 
         args.max_seq_len -= biobert.num_special_tokens_to_add()
         tokenizer = biobert.tokenize
+        is_bert_tokenizer = True
 
     elif args.tokenizer == 'biobert-base':
         from transformers import AutoTokenizer
@@ -163,6 +167,7 @@ def main():
 
         args.max_seq_len -= biobert.num_special_tokens_to_add()
         tokenizer = biobert.tokenize
+        is_bert_tokenizer = True
 
     else:
         warnings.warn("Tokenizer named " + args.tokenizer + " not found."
@@ -170,10 +175,13 @@ def main():
                       "include 'scispacy', 'biobert-base', 'biobert-large',"
                       "and 'default'.")
         tokenizer = default_tokenizer
+        is_bert_tokenizer = False
 
     print("\nReading data\n")
     train_dev, test = read_data(data_dir=args.input_dir,
-                                tokenizer=tokenizer, verbose=1)
+                                tokenizer=tokenizer,
+                                is_bert_tokenizer=is_bert_tokenizer,
+                                verbose=1)
 
     if args.ade_dir is not None:
         ade_train_dev = read_ade_data(ade_data_dir=args.ade_dir, verbose=1)
