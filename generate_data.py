@@ -177,7 +177,6 @@ def main():
         tokenizer = spacy.load("en_core_web_lg")
         is_bert_tokenizer = False
 
-
     else:
         warnings.warn("Tokenizer named " + args.tokenizer + " not found."
                       "Using default tokenizer instead. Acceptable values"
