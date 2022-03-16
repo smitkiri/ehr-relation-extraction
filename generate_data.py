@@ -41,7 +41,7 @@ def parse_arguments():
                         default=0.1)
 
     parser.add_argument("--tokenizer", type=str,
-                        help="The tokenizer to use. 'scispacy', 'scispacy_plus', 'biobert-base', 'biobert-large', 'default'.",
+                        help="The tokenizer to use. 'scispacy', 'scispacy_plus', 'biobert-base', 'biobert-large', 'spacy_lg', 'default'.",
                         default="scispacy")
 
     parser.add_argument("--ext", type=str,
@@ -140,6 +140,11 @@ def main():
     if args.tokenizer == "default":
         tokenizer = default_tokenizer
         is_bert_tokenizer = False
+        
+    elif args.tokenizer == 'spacy_lg':
+        import spacy
+        tokenizer = spacy.load("en_core_web_lg")
+        is_bert_tokenizer = False
 
     elif args.tokenizer == "scispacy":
         import en_ner_bc5cdr_md
@@ -175,7 +180,7 @@ def main():
     else:
         warnings.warn("Tokenizer named " + args.tokenizer + " not found."
                       "Using default tokenizer instead. Acceptable values"
-                      "include 'scispacy', 'biobert-base', 'biobert-large',"
+                      "include 'scispacy', 'spacy_lg', 'biobert-base', 'biobert-large',"
                       "and 'default'.")
         tokenizer = default_tokenizer
         is_bert_tokenizer = False
