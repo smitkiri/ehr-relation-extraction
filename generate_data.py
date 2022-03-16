@@ -140,6 +140,11 @@ def main():
     if args.tokenizer == "default":
         tokenizer = default_tokenizer
         is_bert_tokenizer = False
+        
+    elif args.tokenizer == 'spacy_lg':
+        import spacy
+        tokenizer = spacy.load("en_core_web_lg")
+        is_bert_tokenizer = False
 
     elif args.tokenizer == "scispacy":
         import en_ner_bc5cdr_md
@@ -171,12 +176,6 @@ def main():
         args.max_seq_len -= biobert.num_special_tokens_to_add()
         tokenizer = biobert.tokenize
         is_bert_tokenizer = True
-        
-    elif args.tokenizer == 'spacy_lg':
-        import spacy
-        tokenizer = spacy.load("en_core_web_lg")
-        is_bert_tokenizer = False
-
 
     else:
         warnings.warn("Tokenizer named " + args.tokenizer + " not found."
